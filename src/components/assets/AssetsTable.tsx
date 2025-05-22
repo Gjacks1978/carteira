@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -26,6 +26,8 @@ import {
 import { Edit2, MoreHorizontal, Trash2 } from "lucide-react";
 import { Asset } from "@/types/assets";
 import { cn } from "@/lib/utils";
+import { EditableCell } from "@/components/ui/editable-cell";
+import { EditableSelectCell } from "@/components/ui/editable-select-cell";
 
 interface AssetsTableProps {
   assets: Asset[];
@@ -38,6 +40,15 @@ const AssetsTable = ({ assets, onUpdate, onDelete }: AssetsTableProps) => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<string | null>(null);
+  const [assetTypes, setAssetTypes] = useState<string[]>([]);
+
+  // Initialize asset types from data
+  useEffect(() => {
+    const uniqueTypes = Array.from(
+      new Set(assets.map((asset) => asset.type))
+    ).filter(Boolean);
+    setAssetTypes(uniqueTypes);
+  }, [assets]);
 
   const handleEdit = (asset: Asset) => {
     setEditingAsset({ ...asset });
@@ -70,6 +81,34 @@ const AssetsTable = ({ assets, onUpdate, onDelete }: AssetsTableProps) => {
     }
   };
 
+  const updateAssetField = (id: string, field: keyof Asset, value: any) => {
+    const assetToUpdate = assets.find(item => item.id === id);
+    if (!assetToUpdate) return;
+
+    const updatedAsset = { ...assetToUpdate, [field]: value };
+    
+    // Recalculate total if price or quantity changes
+    if (field === 'price' || field === 'quantity') {
+      updatedAsset.total = updatedAsset.price * updatedAsset.quantity;
+    }
+    
+    onUpdate(updatedAsset);
+  };
+
+  const addAssetType = (newType: string) => {
+    if (!assetTypes.includes(newType)) {
+      setAssetTypes([...assetTypes, newType]);
+    }
+  };
+
+  const removeAssetType = (typeToRemove: string) => {
+    // Only remove if not in use
+    const isInUse = assets.some(item => item.type === typeToRemove);
+    if (!isInUse) {
+      setAssetTypes(assetTypes.filter(t => t !== typeToRemove));
+    }
+  };
+
   if (assets.length === 0) {
     return (
       <div className="py-12 text-center">
@@ -99,16 +138,47 @@ const AssetsTable = ({ assets, onUpdate, onDelete }: AssetsTableProps) => {
           <TableBody>
             {assets.map((asset) => (
               <TableRow key={asset.id}>
-                <TableCell className="font-medium">{asset.name}</TableCell>
-                <TableCell>{asset.ticker}</TableCell>
-                <TableCell>{asset.type}</TableCell>
-                <TableCell className="text-right">
-                  {asset.price.toLocaleString("pt-BR", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
+                <TableCell className="font-medium">
+                  <EditableCell
+                    value={asset.name}
+                    onUpdate={(value) => updateAssetField(asset.id, 'name', value)}
+                  />
                 </TableCell>
-                <TableCell className="text-right">{asset.quantity}</TableCell>
+                <TableCell>
+                  <EditableCell
+                    value={asset.ticker}
+                    onUpdate={(value) => updateAssetField(asset.id, 'ticker', value)}
+                  />
+                </TableCell>
+                <TableCell>
+                  <EditableSelectCell
+                    value={asset.type}
+                    options={assetTypes}
+                    onUpdate={(value) => updateAssetField(asset.id, 'type', value)}
+                    onAddOption={addAssetType}
+                    onRemoveOption={removeAssetType}
+                  />
+                </TableCell>
+                <TableCell className="text-right">
+                  <EditableCell
+                    value={asset.price}
+                    onUpdate={(value) => updateAssetField(asset.id, 'price', Number(value))}
+                    type="number"
+                    formatter={(val) => Number(val).toLocaleString("pt-BR", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                    className="text-right"
+                  />
+                </TableCell>
+                <TableCell className="text-right">
+                  <EditableCell
+                    value={asset.quantity}
+                    onUpdate={(value) => updateAssetField(asset.id, 'quantity', Number(value))}
+                    type="number"
+                    className="text-right"
+                  />
+                </TableCell>
                 <TableCell className="text-right font-medium">
                   {asset.total.toLocaleString("pt-BR", {
                     minimumFractionDigits: 2,
