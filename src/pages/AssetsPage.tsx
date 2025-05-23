@@ -1,35 +1,60 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Loader2 } from "lucide-react";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import AddAssetForm from "@/components/assets/AddAssetForm";
 import AssetTab from "@/components/assets/AssetTab";
-import { assetData } from "@/data/mockData";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
-interface CustomTab {
+interface Category {
   id: string;
-  label: string;
+  name: string;
 }
 
-const defaultTabs = [
-  { id: "renda-fixa", label: "Renda Fixa" },
-  { id: "renda-var-br", label: "Renda Variável BR" },
-  { id: "renda-var-eua", label: "Renda Variável EUA" },
-  { id: "caixa", label: "Caixa" },
-];
-
 const AssetsPage = () => {
-  const [tabs, setTabs] = useState<CustomTab[]>(defaultTabs);
-  const [activeTab, setActiveTab] = useState("renda-fixa");
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [activeTab, setActiveTab] = useState<string | null>(null);
   const [isAddTabDialogOpen, setIsAddTabDialogOpen] = useState(false);
   const [newTabName, setNewTabName] = useState("");
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  // Function to add a new custom tab
-  const handleAddTab = () => {
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase
+        .from("asset_categories")
+        .select("id, name")
+        .order("is_default", { ascending: false })
+        .order("name");
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        setCategories(data);
+        setActiveTab(data[0].id);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao carregar categorias",
+        description: "Não foi possível carregar as categorias de ativos."
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddTab = async () => {
     if (newTabName.trim() === "") {
       toast({
         variant: "destructive",
@@ -39,28 +64,57 @@ const AssetsPage = () => {
       return;
     }
 
-    const newTabId = newTabName.toLowerCase().replace(/\s+/g, "-");
-
-    if (tabs.some((tab) => tab.id === newTabId)) {
+    if (categories.some((cat) => cat.name.toLowerCase() === newTabName.toLowerCase())) {
       toast({
         variant: "destructive",
         title: "Erro",
-        description: "Já existe uma aba com este nome",
+        description: "Já existe uma categoria com este nome",
       });
       return;
     }
 
-    const newTab = { id: newTabId, label: newTabName };
-    setTabs([...tabs, newTab]);
-    setActiveTab(newTabId);
-    setNewTabName("");
-    setIsAddTabDialogOpen(false);
-    
-    toast({
-      title: "Aba adicionada",
-      description: `A aba "${newTabName}" foi adicionada com sucesso`,
-    });
+    try {
+      const { data, error } = await supabase
+        .from("asset_categories")
+        .insert([{ name: newTabName, is_default: false }])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      if (data) {
+        const newCategory: Category = {
+          id: data.id,
+          name: data.name
+        };
+        
+        setCategories([...categories, newCategory]);
+        setActiveTab(data.id);
+        setNewTabName("");
+        setIsAddTabDialogOpen(false);
+        
+        toast({
+          title: "Categoria adicionada",
+          description: `A categoria "${newTabName}" foi adicionada com sucesso`,
+        });
+      }
+    } catch (error) {
+      console.error("Error adding category:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao adicionar categoria",
+        description: "Não foi possível adicionar a categoria. Tente novamente."
+      });
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -73,45 +127,55 @@ const AssetsPage = () => {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="flex items-center justify-between mb-4">
-          <TabsList className="flex-grow overflow-x-auto">
-            {tabs.map((tab) => (
-              <TabsTrigger key={tab.id} value={tab.id} className="capitalize">
-                {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-          
-          <Dialog open={isAddTabDialogOpen} onOpenChange={setIsAddTabDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="ml-2">
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Nova Aba
-              </Button>
-            </DialogTrigger>
-            <AddAssetForm
-              title="Adicionar Nova Aba"
-              description="Crie uma nova categoria para seus ativos."
-              inputLabel="Nome da Aba"
-              inputPlaceholder="Ex: Imóveis, Previdência, etc."
-              buttonLabel="Adicionar Aba"
-              inputValue={newTabName}
-              onInputChange={(e) => setNewTabName(e.target.value)}
-              onSubmit={handleAddTab}
-            />
-          </Dialog>
+      {categories.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12">
+          <p className="text-muted-foreground mb-4">Nenhuma categoria encontrada</p>
+          <Button onClick={() => setIsAddTabDialogOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Adicionar Categoria
+          </Button>
         </div>
+      ) : (
+        <Tabs value={activeTab || undefined} onValueChange={setActiveTab} className="w-full">
+          <div className="flex items-center justify-between mb-4">
+            <TabsList className="flex-grow overflow-x-auto">
+              {categories.map((category) => (
+                <TabsTrigger key={category.id} value={category.id} className="capitalize">
+                  {category.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            
+            <Dialog open={isAddTabDialogOpen} onOpenChange={setIsAddTabDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="ml-2">
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  Nova Categoria
+                </Button>
+              </DialogTrigger>
+              <AddAssetForm
+                title="Adicionar Nova Categoria"
+                description="Crie uma nova categoria para seus ativos."
+                inputLabel="Nome da Categoria"
+                inputPlaceholder="Ex: Imóveis, Previdência, etc."
+                buttonLabel="Adicionar Categoria"
+                inputValue={newTabName}
+                onInputChange={(e) => setNewTabName(e.target.value)}
+                onSubmit={handleAddTab}
+              />
+            </Dialog>
+          </div>
 
-        {tabs.map((tab) => (
-          <TabsContent key={tab.id} value={tab.id}>
-            <AssetTab 
-              tabId={tab.id} 
-              assets={assetData[tab.id as keyof typeof assetData] || []} 
-            />
-          </TabsContent>
-        ))}
-      </Tabs>
+          {categories.map((category) => (
+            <TabsContent key={category.id} value={category.id}>
+              <AssetTab 
+                tabId={category.id} 
+                categoryId={category.id}
+              />
+            </TabsContent>
+          ))}
+        </Tabs>
+      )}
     </div>
   );
 };

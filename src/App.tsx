@@ -8,25 +8,37 @@ import Index from "./pages/Index";
 import AssetsPage from "./pages/AssetsPage";
 import CryptoPage from "./pages/CryptoPage";
 import NotFound from "./pages/NotFound";
-import Layout from "./components/layout/Layout";
+import AuthPage from "./pages/AuthPage";
+import { AuthProvider } from "./contexts/AuthContext";
+import ProtectedRoute from "./components/layout/ProtectedRoute";
+import LayoutWrapper from "./components/layout/LayoutWrapper";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route element={<Layout />}>
-            <Route path="/" element={<Index />} />
-            <Route path="/ativos" element={<AssetsPage />} />
-            <Route path="/cripto" element={<CryptoPage />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <AuthProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/auth" element={<AuthPage />} />
+            
+            {/* Protected routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route element={<LayoutWrapper />}>
+                <Route path="/" element={<Index />} />
+                <Route path="/ativos" element={<AssetsPage />} />
+                <Route path="/cripto" element={<CryptoPage />} />
+              </Route>
+            </Route>
+            
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

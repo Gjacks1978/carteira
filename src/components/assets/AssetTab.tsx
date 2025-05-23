@@ -1,22 +1,24 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
-import { PlusCircle, Download } from "lucide-react";
+import { PlusCircle, Download, Loader2 } from "lucide-react";
 import { Asset } from "@/types/assets";
 import { calculateTabMetrics } from "@/lib/assetUtils";
 import AssetsTable from "./AssetsTable";
 import AddAssetForm from "./AddAssetForm";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AssetTabProps {
   tabId: string;
-  assets: Asset[];
+  categoryId?: string;
 }
 
-const AssetTab = ({ tabId, assets: initialAssets }: AssetTabProps) => {
-  const [assets, setAssets] = useState<Asset[]>(initialAssets);
+const AssetTab = ({ tabId, categoryId }: AssetTabProps) => {
+  const [assets, setAssets] = useState<Asset[]>([]);
   const [openAddAssetDialog, setOpenAddAssetDialog] = useState(false);
   const [newAsset, setNewAsset] = useState<Partial<Asset>>({
     name: "",
@@ -26,11 +28,65 @@ const AssetTab = ({ tabId, assets: initialAssets }: AssetTabProps) => {
     quantity: 0,
     total: 0,
   });
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
 
-  const metrics = calculateTabMetrics(assets);
+  useEffect(() => {
+    fetchAssets();
+  }, [tabId, categoryId]);
+
+  const fetchAssets = async () => {
+    try {
+      setLoading(true);
+      
+      const categoryFilter = categoryId 
+        ? { category_id: categoryId }
+        : { category_id: null }; // This should be replaced with proper category lookup
+      
+      let query = supabase
+        .from("assets")
+        .select("*");
+      
+      if (categoryId) {
+        query = query.eq("category_id", categoryId);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data) {
+        // Transform database format to Asset type
+        const transformedAssets = data.map(item => ({
+          id: item.id,
+          name: item.name,
+          ticker: item.ticker,
+          type: item.type,
+          price: Number(item.price),
+          quantity: Number(item.quantity),
+          total: Number(item.total),
+          return: Number(item.return_value),
+          returnPercentage: Number(item.return_percentage),
+        }));
+        
+        setAssets(transformedAssets);
+      }
+    } catch (error) {
+      console.error("Error fetching assets:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao carregar ativos",
+        description: "Não foi possível carregar a lista de ativos."
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   
-  const handleAddAsset = () => {
+  const handleAddAsset = async () => {
     if (!newAsset.name || !newAsset.ticker) {
       toast({
         variant: "destructive",
@@ -42,54 +98,153 @@ const AssetTab = ({ tabId, assets: initialAssets }: AssetTabProps) => {
 
     const calculatedTotal = (newAsset.price || 0) * (newAsset.quantity || 0);
     
-    const asset: Asset = {
-      id: Date.now().toString(),
-      name: newAsset.name || "",
-      ticker: newAsset.ticker || "",
-      type: newAsset.type || "Outros",
-      price: newAsset.price || 0,
-      quantity: newAsset.quantity || 0,
-      total: calculatedTotal,
-      return: 0,
-      returnPercentage: 0,
-    };
-    
-    setAssets([...assets, asset]);
-    setOpenAddAssetDialog(false);
-    setNewAsset({
-      name: "",
-      ticker: "",
-      type: "",
-      price: 0,
-      quantity: 0,
-      total: 0,
-    });
-    
-    toast({
-      title: "Ativo adicionado",
-      description: `${asset.name} (${asset.ticker}) foi adicionado com sucesso`,
-    });
-  };
-  
-  const handleUpdateAsset = (updatedAsset: Asset) => {
-    const updatedAssets = assets.map((asset) =>
-      asset.id === updatedAsset.id ? updatedAsset : asset
-    );
-    setAssets(updatedAssets);
-  };
-  
-  const handleDeleteAsset = (id: string) => {
-    const assetToDelete = assets.find((asset) => asset.id === id);
-    const updatedAssets = assets.filter((asset) => asset.id !== id);
-    setAssets(updatedAssets);
-    
-    if (assetToDelete) {
+    try {
+      const { data, error } = await supabase
+        .from("assets")
+        .insert([
+          {
+            user_id: user?.id,
+            name: newAsset.name,
+            ticker: newAsset.ticker,
+            type: newAsset.type || "Outros",
+            price: newAsset.price || 0,
+            quantity: newAsset.quantity || 0,
+            total: calculatedTotal,
+            return_value: 0,
+            return_percentage: 0,
+            category_id: categoryId
+          }
+        ])
+        .select()
+        .single();
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data) {
+        // Add the new asset to the state
+        const newAssetItem: Asset = {
+          id: data.id,
+          name: data.name,
+          ticker: data.ticker,
+          type: data.type,
+          price: Number(data.price),
+          quantity: Number(data.quantity),
+          total: Number(data.total),
+          return: Number(data.return_value),
+          returnPercentage: Number(data.return_percentage),
+        };
+        
+        setAssets([...assets, newAssetItem]);
+        setOpenAddAssetDialog(false);
+        setNewAsset({
+          name: "",
+          ticker: "",
+          type: "",
+          price: 0,
+          quantity: 0,
+          total: 0,
+        });
+        
+        toast({
+          title: "Ativo adicionado",
+          description: `${newAssetItem.name} (${newAssetItem.ticker}) foi adicionado com sucesso`,
+        });
+      }
+    } catch (error) {
+      console.error("Error adding asset:", error);
       toast({
-        title: "Ativo removido",
-        description: `${assetToDelete.name} (${assetToDelete.ticker}) foi removido com sucesso`,
+        variant: "destructive",
+        title: "Erro ao adicionar ativo",
+        description: "Não foi possível adicionar o ativo. Tente novamente."
       });
     }
   };
+  
+  const handleUpdateAsset = async (updatedAsset: Asset) => {
+    try {
+      const { error } = await supabase
+        .from("assets")
+        .update({
+          name: updatedAsset.name,
+          ticker: updatedAsset.ticker,
+          type: updatedAsset.type,
+          price: updatedAsset.price,
+          quantity: updatedAsset.quantity,
+          total: updatedAsset.total,
+          return_value: updatedAsset.return,
+          return_percentage: updatedAsset.returnPercentage
+        })
+        .eq("id", updatedAsset.id);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Update the asset in the state
+      const updatedAssets = assets.map((asset) =>
+        asset.id === updatedAsset.id ? updatedAsset : asset
+      );
+      
+      setAssets(updatedAssets);
+      
+      toast({
+        title: "Ativo atualizado",
+        description: `${updatedAsset.name} (${updatedAsset.ticker}) foi atualizado com sucesso`
+      });
+    } catch (error) {
+      console.error("Error updating asset:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao atualizar ativo",
+        description: "Não foi possível atualizar o ativo. Tente novamente."
+      });
+    }
+  };
+  
+  const handleDeleteAsset = async (id: string) => {
+    try {
+      const assetToDelete = assets.find((asset) => asset.id === id);
+      
+      const { error } = await supabase
+        .from("assets")
+        .delete()
+        .eq("id", id);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Remove the asset from the state
+      const updatedAssets = assets.filter((asset) => asset.id !== id);
+      setAssets(updatedAssets);
+      
+      if (assetToDelete) {
+        toast({
+          title: "Ativo removido",
+          description: `${assetToDelete.name} (${assetToDelete.ticker}) foi removido com sucesso`,
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting asset:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao remover ativo",
+        description: "Não foi possível remover o ativo. Tente novamente."
+      });
+    }
+  };
+
+  const metrics = calculateTabMetrics(assets);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

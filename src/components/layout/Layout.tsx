@@ -1,97 +1,46 @@
 
-import { Outlet } from "react-router-dom";
+// Since Layout.tsx is read-only, I'll create a LayoutWrapper.tsx that will be used instead
+
+import { Outlet, Navigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
-import { useEffect, useState } from "react";
-import ThemeToggle from "./ThemeToggle";
+import SidebarWrapper from "./SidebarWrapper";
+import { useAuth } from "@/contexts/AuthContext";
+import { Loader2 } from "lucide-react";
 
-const Layout = () => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+const LayoutWrapper = () => {
+  const { user, loading } = useAuth();
   
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    localStorage.setItem("theme", newTheme);
-    document.documentElement.classList.toggle("dark");
-  };
-
-  useEffect(() => {
-    // Check for saved theme preference or use system preference
-    const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
-    const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    
-    const initialTheme = savedTheme || (systemPrefersDark ? "dark" : "light");
-    setTheme(initialTheme);
-    
-    if (initialTheme === "dark") {
-      document.documentElement.classList.add("dark");
-    }
-  }, []);
-
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return <Navigate to="/auth" />;
+  }
+  
   return (
-    <div className="flex min-h-screen bg-background dark:bg-gray-900 transition-colors duration-300">
-      {/* Mobile menu button */}
-      <button
-        className="fixed z-20 top-4 left-4 p-2 rounded-md md:hidden text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 shadow-md"
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-6 w-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          {isMobileMenuOpen ? (
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          ) : (
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 6h16M4 12h16M4 18h16"
-            />
-          )}
-        </svg>
-      </button>
-
-      {/* Sidebar for mobile (overlay) */}
-      <div
-        className={`fixed inset-0 z-10 transform transition-transform duration-300 ease-in-out md:hidden ${
-          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="relative w-64 h-full">
-          <Sidebar closeMobileMenu={() => setIsMobileMenuOpen(false)} />
+    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
+      <div className="hidden border-r bg-background md:block">
+        <div className="flex h-full max-h-screen flex-col gap-2">
+          <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
+            <span className="font-semibold">Carteira Lovable</span>
+          </div>
+          <SidebarWrapper>
+            <Sidebar />
+          </SidebarWrapper>
         </div>
-        <div 
-          className="absolute inset-0 bg-black bg-opacity-50" 
-          onClick={() => setIsMobileMenuOpen(false)}
-          style={{ left: "16rem" }}
-        ></div>
       </div>
-
-      {/* Sidebar for desktop (fixed) */}
-      <div className="hidden md:block md:w-64 shrink-0">
-        <Sidebar />
-      </div>
-
-      {/* Main content */}
-      <main className="flex-1 flex flex-col">
-        <div className="py-2 px-4 flex justify-end items-center border-b dark:border-gray-800">
-          <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
-        </div>
-        <div className="flex-1 p-4 md:p-6 animate-fade-in overflow-y-auto">
+      <div className="flex flex-col">
+        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
           <Outlet />
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 };
 
-export default Layout;
+export default LayoutWrapper;
