@@ -76,11 +76,17 @@ export const calculateCryptoMetrics = (cryptos: Crypto[]): CryptoMetrics => {
     };
   });
   
+  // Calculate stablecoins total (for reference)
+  const stablecoinsTotal = cryptos
+    .filter(crypto => crypto.sector.toLowerCase() === "stablecoins")
+    .reduce((acc, crypto) => acc + crypto.totalUSD, 0);
+  
   return {
     totalUSD,
     totalBRL,
     cryptoCount,
     portfolioPercentage,
     topCustody,
+    stablecoinsTotal, // Adicionado para referência
   };
 };

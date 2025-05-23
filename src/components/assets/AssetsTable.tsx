@@ -17,13 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Edit2, MoreHorizontal, Trash2 } from "lucide-react";
+import { Edit2, Trash2 } from "lucide-react";
 import { Asset } from "@/types/assets";
 import { cn } from "@/lib/utils";
 import { EditableCell } from "@/components/ui/editable-cell";
@@ -132,7 +126,7 @@ const AssetsTable = ({ assets, onUpdate, onDelete }: AssetsTableProps) => {
               <TableHead className="text-right">Quantidade</TableHead>
               <TableHead className="text-right">Total (R$)</TableHead>
               <TableHead className="text-right">Rentab. (%)</TableHead>
-              <TableHead className="w-[80px]"></TableHead>
+              <TableHead className="text-center w-[100px]">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -195,26 +189,17 @@ const AssetsTable = ({ assets, onUpdate, onDelete }: AssetsTableProps) => {
                   {asset.returnPercentage > 0 && "+"}
                   {asset.returnPercentage.toFixed(2)}%
                 </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Abrir menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleEdit(asset)}>
-                        <Edit2 className="mr-2 h-4 w-4" /> Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => handleDeleteClick(asset.id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" /> Excluir
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                <TableCell className="text-center">
+                  <div className="flex justify-center space-x-2">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(asset)}>
+                      <Edit2 className="h-4 w-4" />
+                      <span className="sr-only">Editar</span>
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDeleteClick(asset.id)}>
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Excluir</span>
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from "react";
-import { Check, ChevronsUpDown, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronsUpDown, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,6 +18,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { Trash2 } from "lucide-react";
 
 interface EditableSelectCellProps {
   value: string;
@@ -66,6 +67,13 @@ const EditableSelectCell: React.FC<EditableSelectCellProps> = ({
     setOpen(false);
   };
 
+  const handleRemoveOption = (e: React.MouseEvent, optionValue: string) => {
+    e.stopPropagation();
+    if (onRemoveOption) {
+      onRemoveOption(optionValue);
+    }
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -95,17 +103,16 @@ const EditableSelectCell: React.FC<EditableSelectCellProps> = ({
                   onSelect={() => handleOptionSelect(option)}
                   className="flex justify-between items-center"
                 >
-                  <div className="flex-1 truncate">{option}</div>
-                  {value === option && <Check className="h-4 w-4 ml-2" />}
+                  <div className="flex items-center space-x-2 flex-1">
+                    <span className="truncate">{option}</span>
+                    {value === option && <Check className="h-4 w-4 ml-2" />}
+                  </div>
                   {onRemoveOption && (
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-6 w-6 hover:bg-destructive/10 hover:text-destructive ml-auto"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onRemoveOption(option);
-                      }}
+                      onClick={(e) => handleRemoveOption(e, option)}
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>

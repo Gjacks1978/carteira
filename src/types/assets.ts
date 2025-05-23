@@ -40,6 +40,7 @@ export interface CryptoMetrics {
   cryptoCount: number;
   portfolioPercentage: number;
   topCustody: string | null;
+  stablecoinsTotal?: number;
 }
 
 export interface PortfolioAllocation {

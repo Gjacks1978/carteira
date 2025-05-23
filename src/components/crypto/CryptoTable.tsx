@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Table,
   TableBody,
@@ -17,15 +17,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Edit2, MoreHorizontal, Trash2 } from "lucide-react";
+import { Edit2, Trash2 } from "lucide-react";
 import { Crypto } from "@/types/assets";
-import { cn } from "@/lib/utils";
 import { EditableCell } from "@/components/ui/editable-cell";
 import { EditableSelectCell } from "@/components/ui/editable-select-cell";
 
@@ -40,38 +33,37 @@ const CryptoTable = ({ crypto, onUpdate, onDelete }: CryptoTableProps) => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [cryptoToDelete, setCryptoToDelete] = useState<string | null>(null);
-  const [sectors, setSectors] = useState<string[]>([]);
-  const [custodies, setCustodies] = useState<string[]>([]);
-  
+  const [sectors, setSectors] = useState<string[]>([
+    "Store of Value",
+    "Smart Contracts",
+    "DeFi",
+    "NFTs",
+    "Stablecoins",
+    "Outros"
+  ]);
+  const [custodies, setCustodies] = useState<string[]>([
+    "Carteira Local",
+    "Binance",
+    "Coinbase",
+    "FTX",
+    "Kraken",
+    "Outro"
+  ]);
+
   const usdToBRL = 5.05; // Mock exchange rate
 
-  // Initialize sectors and custodies from crypto data
-  useEffect(() => {
-    const uniqueSectors = Array.from(
-      new Set(crypto.map((item) => item.sector))
-    ).filter(Boolean);
-    
-    const uniqueCustodies = Array.from(
-      new Set(crypto.map((item) => item.custody))
-    ).filter(Boolean);
-    
-    setSectors(uniqueSectors);
-    setCustodies(uniqueCustodies);
-  }, [crypto]);
-
-  const handleEdit = (crypto: Crypto) => {
-    setEditingCrypto({ ...crypto });
+  const handleEdit = (asset: Crypto) => {
+    setEditingCrypto({ ...asset });
     setIsEditDialogOpen(true);
   };
 
   const handleConfirmEdit = () => {
     if (editingCrypto) {
       // Recalculate totals
-      const totalUSD = editingCrypto.priceUSD * editingCrypto.quantity;
       const updatedCrypto = {
         ...editingCrypto,
-        totalUSD,
-        totalBRL: totalUSD * usdToBRL,
+        totalUSD: editingCrypto.priceUSD * editingCrypto.quantity,
+        totalBRL: editingCrypto.priceUSD * editingCrypto.quantity * usdToBRL,
       };
       onUpdate(updatedCrypto);
       setIsEditDialogOpen(false);
@@ -98,11 +90,10 @@ const CryptoTable = ({ crypto, onUpdate, onDelete }: CryptoTableProps) => {
 
     const updatedCrypto = { ...cryptoToUpdate, [field]: value };
     
-    // Recalculate derived values if price or quantity changes
+    // Recalculate totals if price or quantity changes
     if (field === 'priceUSD' || field === 'quantity') {
-      const totalUSD = updatedCrypto.priceUSD * updatedCrypto.quantity;
-      updatedCrypto.totalUSD = totalUSD;
-      updatedCrypto.totalBRL = totalUSD * usdToBRL;
+      updatedCrypto.totalUSD = updatedCrypto.priceUSD * updatedCrypto.quantity;
+      updatedCrypto.totalBRL = updatedCrypto.totalUSD * usdToBRL;
     }
     
     onUpdate(updatedCrypto);
@@ -152,116 +143,86 @@ const CryptoTable = ({ crypto, onUpdate, onDelete }: CryptoTableProps) => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Ticker</TableHead>
               <TableHead>Nome</TableHead>
+              <TableHead>Ticker</TableHead>
               <TableHead>Setor</TableHead>
               <TableHead className="text-right">Preço (USD)</TableHead>
               <TableHead className="text-right">Quantidade</TableHead>
               <TableHead className="text-right">Total (USD)</TableHead>
-              <TableHead className="text-right">Total (BRL)</TableHead>
               <TableHead>Custódia</TableHead>
-              <TableHead className="text-right">% Carteira</TableHead>
-              <TableHead className="w-[80px]"></TableHead>
+              <TableHead className="text-center w-[100px]">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {crypto.map((item) => (
-              <TableRow key={item.id}>
+            {crypto.map((asset) => (
+              <TableRow key={asset.id}>
                 <TableCell className="font-medium">
                   <EditableCell
-                    value={item.ticker}
-                    onUpdate={(value) => updateCryptoField(item.id, 'ticker', value)}
+                    value={asset.name}
+                    onUpdate={(value) => updateCryptoField(asset.id, 'name', value)}
                   />
                 </TableCell>
                 <TableCell>
                   <EditableCell
-                    value={item.name}
-                    onUpdate={(value) => updateCryptoField(item.id, 'name', value)}
+                    value={asset.ticker}
+                    onUpdate={(value) => updateCryptoField(asset.id, 'ticker', value)}
                   />
                 </TableCell>
                 <TableCell>
                   <EditableSelectCell
-                    value={item.sector}
+                    value={asset.sector}
                     options={sectors}
-                    onUpdate={(value) => updateCryptoField(item.id, 'sector', value)}
+                    onUpdate={(value) => updateCryptoField(asset.id, 'sector', value)}
                     onAddOption={addSector}
                     onRemoveOption={removeSector}
                   />
                 </TableCell>
                 <TableCell className="text-right">
                   <EditableCell
-                    value={item.priceUSD}
-                    onUpdate={(value) => updateCryptoField(item.id, 'priceUSD', Number(value))}
+                    value={asset.priceUSD}
+                    onUpdate={(value) => updateCryptoField(asset.id, 'priceUSD', Number(value))}
                     type="number"
-                    formatter={(val) => `$${Number(val).toLocaleString("en-US", {
+                    formatter={(val) => Number(val).toLocaleString("en-US", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
-                    })}`}
+                    })}
                     className="text-right"
                   />
                 </TableCell>
                 <TableCell className="text-right">
                   <EditableCell
-                    value={item.quantity}
-                    onUpdate={(value) => updateCryptoField(item.id, 'quantity', Number(value))}
+                    value={asset.quantity}
+                    onUpdate={(value) => updateCryptoField(asset.id, 'quantity', Number(value))}
                     type="number"
-                    formatter={(val) => 
-                      Number(val) < 1 
-                        ? Number(val).toFixed(6) 
-                        : Number(val).toLocaleString("en-US", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 6,
-                          })
-                    }
                     className="text-right"
                   />
                 </TableCell>
-                <TableCell className="text-right">
-                  ${item.totalUSD.toLocaleString("en-US", {
+                <TableCell className="text-right font-medium">
+                  ${asset.totalUSD.toLocaleString("en-US", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
                 </TableCell>
-                <TableCell className="text-right">
-                  {item.totalBRL.toLocaleString("pt-BR", {
-                    style: "currency",
-                    currency: "BRL",
-                  })}
-                </TableCell>
                 <TableCell>
                   <EditableSelectCell
-                    value={item.custody}
+                    value={asset.custody}
                     options={custodies}
-                    onUpdate={(value) => updateCryptoField(item.id, 'custody', value)}
+                    onUpdate={(value) => updateCryptoField(asset.id, 'custody', value)}
                     onAddOption={addCustody}
                     onRemoveOption={removeCustody}
                   />
                 </TableCell>
-                <TableCell 
-                  className="text-right font-medium"
-                >
-                  {item.portfolioPercentage.toFixed(2)}%
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Abrir menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleEdit(item)}>
-                        <Edit2 className="mr-2 h-4 w-4" /> Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => handleDeleteClick(item.id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" /> Excluir
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                <TableCell className="text-center">
+                  <div className="flex justify-center space-x-2">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(asset)}>
+                      <Edit2 className="h-4 w-4" />
+                      <span className="sr-only">Editar</span>
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDeleteClick(asset.id)}>
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Excluir</span>
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -277,21 +238,6 @@ const CryptoTable = ({ crypto, onUpdate, onDelete }: CryptoTableProps) => {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="ticker" className="text-right">
-                Ticker
-              </label>
-              <Input
-                id="ticker"
-                value={editingCrypto?.ticker || ""}
-                onChange={(e) =>
-                  setEditingCrypto((prev) =>
-                    prev ? { ...prev, ticker: e.target.value } : null
-                  )
-                }
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
               <label htmlFor="name" className="text-right">
                 Nome
               </label>
@@ -301,6 +247,21 @@ const CryptoTable = ({ crypto, onUpdate, onDelete }: CryptoTableProps) => {
                 onChange={(e) =>
                   setEditingCrypto((prev) =>
                     prev ? { ...prev, name: e.target.value } : null
+                  )
+                }
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="ticker" className="text-right">
+                Ticker
+              </label>
+              <Input
+                id="ticker"
+                value={editingCrypto?.ticker || ""}
+                onChange={(e) =>
+                  setEditingCrypto((prev) =>
+                    prev ? { ...prev, ticker: e.target.value } : null
                   )
                 }
                 className="col-span-3"
