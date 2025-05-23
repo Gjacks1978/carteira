@@ -5,7 +5,7 @@ import SidebarWrapper from "./SidebarWrapper";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 
-const Layout = () => {
+const LayoutWrapper = () => {
   const { user, loading } = useAuth();
   
   if (loading) {
@@ -41,4 +41,4 @@ const Layout = () => {
   );
 };
 
-export default Layout;
+export default LayoutWrapper;
