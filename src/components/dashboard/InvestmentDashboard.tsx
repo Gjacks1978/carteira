@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -20,31 +20,142 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { investmentData } from "@/data/mockData";
 import AllocationChart from "./AllocationChart";
 import PerformanceChart from "./PerformanceChart";
 import QuickStats from "./QuickStats";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Loader2 } from "lucide-react";
 
 const InvestmentDashboard = () => {
   const [period, setPeriod] = useState<"1m" | "3m" | "6m" | "1y" | "all">("1y");
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState({
+    totalInvested: 0,
+    totalReturn: 0,
+    returnPercentage: 0,
+    portfolioAllocation: [] as Array<{name: string, value: number}>,
+    assetsCount: 0,
+    cryptoCount: 0,
+  });
   const { toast } = useToast();
+  const { user } = useAuth();
+  
   const currentDate = new Date().toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
   });
 
-  // Calculate dashboard metrics
-  const totalInvested = investmentData.totalInvested;
-  const totalReturn = investmentData.totalReturn;
-  const returnPercentage = investmentData.returnPercentage;
-  const isPositiveReturn = returnPercentage >= 0;
-  
+  useEffect(() => {
+    fetchDashboardData();
+  }, [user]);
+
+  const fetchDashboardData = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+
+      // Fetch assets data
+      const { data: assetsData, error: assetsError } = await supabase
+        .from("assets")
+        .select("*")
+        .eq("user_id", user.id);
+
+      if (assetsError) throw assetsError;
+
+      // Fetch crypto assets data
+      const { data: cryptoData, error: cryptoError } = await supabase
+        .from("crypto_assets")
+        .select("*")
+        .eq("user_id", user.id);
+
+      if (cryptoError) throw cryptoError;
+
+      // Calculate totals
+      const assetsTotal = assetsData?.reduce((sum, asset) => sum + Number(asset.total), 0) || 0;
+      const cryptoTotalBRL = cryptoData?.reduce((sum, crypto) => sum + Number(crypto.total_brl), 0) || 0;
+      
+      const totalInvested = assetsTotal + cryptoTotalBRL;
+      
+      // Calculate return (using return_value from assets)
+      const assetsReturn = assetsData?.reduce((sum, asset) => sum + Number(asset.return_value || 0), 0) || 0;
+      const totalReturn = assetsReturn; // Crypto return calculation would need historical data
+      
+      const returnPercentage = totalInvested > 0 ? (totalReturn / totalInvested) * 100 : 0;
+
+      // Calculate portfolio allocation
+      const portfolioAllocation = [];
+      
+      if (assetsTotal > 0) {
+        portfolioAllocation.push({
+          name: "Ativos Tradicionais",
+          value: assetsTotal
+        });
+      }
+      
+      if (cryptoTotalBRL > 0) {
+        portfolioAllocation.push({
+          name: "Criptomoedas",
+          value: cryptoTotalBRL
+        });
+      }
+
+      // Group assets by type
+      const assetsByType = assetsData?.reduce((acc, asset) => {
+        const type = asset.type || "Outros";
+        acc[type] = (acc[type] || 0) + Number(asset.total);
+        return acc;
+      }, {} as Record<string, number>) || {};
+
+      // Add asset types to allocation
+      Object.entries(assetsByType).forEach(([type, value]) => {
+        if (value > 0) {
+          portfolioAllocation.push({
+            name: type,
+            value: value
+          });
+        }
+      });
+
+      setDashboardData({
+        totalInvested,
+        totalReturn,
+        returnPercentage,
+        portfolioAllocation,
+        assetsCount: assetsData?.length || 0,
+        cryptoCount: cryptoData?.length || 0,
+      });
+
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao carregar dados",
+        description: "Não foi possível carregar os dados do dashboard."
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRefresh = () => {
+    fetchDashboardData();
     toast({
       description: "Dados atualizados com sucesso!",
     });
   };
+
+  const isPositiveReturn = dashboardData.returnPercentage >= 0;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -81,7 +192,7 @@ const InvestmentDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {totalInvested.toLocaleString("pt-BR", {
+              {dashboardData.totalInvested.toLocaleString("pt-BR", {
                 style: "currency",
                 currency: "BRL",
               })}
@@ -103,7 +214,7 @@ const InvestmentDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {totalReturn.toLocaleString("pt-BR", {
+              {dashboardData.totalReturn.toLocaleString("pt-BR", {
                 style: "currency",
                 currency: "BRL",
               })}
@@ -112,7 +223,7 @@ const InvestmentDashboard = () => {
               <span
                 className={isPositiveReturn ? "text-success" : "text-danger"}
               >
-                {returnPercentage.toFixed(2)}%
+                {dashboardData.returnPercentage.toFixed(2)}%
               </span>
               {isPositiveReturn ? (
                 <ArrowUpRight className="h-3 w-3 text-success" />
@@ -126,28 +237,26 @@ const InvestmentDashboard = () => {
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rentabilidade YTD</CardTitle>
+            <CardTitle className="text-sm font-medium">Total de Ativos</CardTitle>
             <Percent className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+12.5%</div>
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <span className="text-success">+2.5%</span>
-              <ArrowUpRight className="h-3 w-3 text-success" />
-              <span>vs. benchmark</span>
+            <div className="text-2xl font-bold">{dashboardData.assetsCount + dashboardData.cryptoCount}</div>
+            <p className="text-xs text-muted-foreground">
+              {dashboardData.assetsCount} tradicionais, {dashboardData.cryptoCount} cripto
             </p>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Liquidez</CardTitle>
+            <CardTitle className="text-sm font-medium">Diversificação</CardTitle>
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">85.3%</div>
+            <div className="text-2xl font-bold">{dashboardData.portfolioAllocation.length}</div>
             <p className="text-xs text-muted-foreground">
-              Ativos de alta liquidez
+              Classes de ativos
             </p>
           </CardContent>
         </Card>
@@ -176,7 +285,7 @@ const InvestmentDashboard = () => {
                 <CardTitle>Alocação por Classe</CardTitle>
               </CardHeader>
               <CardContent className="flex justify-center">
-                <AllocationChart />
+                <AllocationChart data={dashboardData.portfolioAllocation} />
               </CardContent>
             </Card>
           </div>
@@ -190,7 +299,7 @@ const InvestmentDashboard = () => {
               <CardTitle>Distribuição de Ativos</CardTitle>
             </CardHeader>
             <CardContent className="pl-2">
-              <AllocationChart />
+              <AllocationChart data={dashboardData.portfolioAllocation} />
             </CardContent>
           </Card>
         </TabsContent>

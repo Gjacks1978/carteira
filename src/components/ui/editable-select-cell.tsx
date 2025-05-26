@@ -68,9 +68,22 @@ const EditableSelectCell: React.FC<EditableSelectCellProps> = ({
   };
 
   const handleRemoveOption = (e: React.MouseEvent, optionValue: string) => {
+    e.preventDefault();
     e.stopPropagation();
     if (onRemoveOption) {
       onRemoveOption(optionValue);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAddOption();
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setAddingOption(false);
+      setNewOption("");
     }
   };
 
@@ -90,7 +103,7 @@ const EditableSelectCell: React.FC<EditableSelectCellProps> = ({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0" align="start">
+      <PopoverContent className="w-[200px] p-0 bg-popover border shadow-lg z-50" align="start">
         <Command>
           <CommandInput placeholder={placeholder} />
           <CommandList>
@@ -101,7 +114,7 @@ const EditableSelectCell: React.FC<EditableSelectCellProps> = ({
                   key={option}
                   value={option}
                   onSelect={() => handleOptionSelect(option)}
-                  className="flex justify-between items-center"
+                  className="flex justify-between items-center cursor-pointer"
                 >
                   <div className="flex items-center space-x-2 flex-1">
                     <span className="truncate">{option}</span>
@@ -113,6 +126,7 @@ const EditableSelectCell: React.FC<EditableSelectCellProps> = ({
                       size="icon"
                       className="h-6 w-6 hover:bg-destructive/10 hover:text-destructive ml-auto"
                       onClick={(e) => handleRemoveOption(e, option)}
+                      onMouseDown={(e) => e.preventDefault()}
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
@@ -132,13 +146,7 @@ const EditableSelectCell: React.FC<EditableSelectCellProps> = ({
                         onChange={(e) => setNewOption(e.target.value)}
                         placeholder={createPlaceholder}
                         className="h-8"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleAddOption();
-                          if (e.key === "Escape") {
-                            setAddingOption(false);
-                            setNewOption("");
-                          }
-                        }}
+                        onKeyDown={handleKeyDown}
                       />
                       <Button
                         size="sm"

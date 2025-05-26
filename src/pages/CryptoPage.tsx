@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,12 +26,47 @@ const CryptoPage = () => {
     custody: "",
   });
   const [loading, setLoading] = useState(true);
+  const [sectors, setSectors] = useState<{[key: string]: string}>({});
+  const [custodies, setCustodies] = useState<{[key: string]: string}>({});
   const { toast } = useToast();
   const { user } = useAuth();
   
   useEffect(() => {
     fetchCryptoAssets();
+    fetchSectorsAndCustodies();
   }, []);
+
+  const fetchSectorsAndCustodies = async () => {
+    try {
+      // Fetch sectors
+      const { data: sectorsData } = await supabase
+        .from("sectors")
+        .select("*");
+      
+      if (sectorsData) {
+        const sectorsMap = sectorsData.reduce((acc, sector) => {
+          acc[sector.id] = sector.name;
+          return acc;
+        }, {});
+        setSectors(sectorsMap);
+      }
+
+      // Fetch custodies
+      const { data: custodiesData } = await supabase
+        .from("custodies")
+        .select("*");
+      
+      if (custodiesData) {
+        const custodiesMap = custodiesData.reduce((acc, custody) => {
+          acc[custody.id] = custody.name;
+          return acc;
+        }, {});
+        setCustodies(custodiesMap);
+      }
+    } catch (error) {
+      console.error("Error fetching sectors and custodies:", error);
+    }
+  };
 
   const fetchCryptoAssets = async () => {
     try {
@@ -51,12 +85,12 @@ const CryptoPage = () => {
           id: item.id,
           ticker: item.ticker,
           name: item.name,
-          sector: item.sector_id ? "Outros" : "Outros", // This would be replaced with actual sector name
+          sector: "Outros", // Will be updated when sectors are loaded
           priceUSD: Number(item.price_usd),
           quantity: Number(item.quantity),
           totalUSD: Number(item.total_usd),
           totalBRL: Number(item.total_brl),
-          custody: item.custody_id ? "Exchange" : "Carteira Local", // This would be replaced with actual custody name
+          custody: "Carteira Local", // Will be updated when custodies are loaded
           portfolioPercentage: Number(item.portfolio_percentage),
           changePercentage: Number(item.change_percentage),
         }));
@@ -100,13 +134,13 @@ const CryptoPage = () => {
             user_id: user?.id,
             ticker: newCrypto.ticker,
             name: newCrypto.name,
-            sector_id: null, // This would be replaced with actual sector ID
+            sector_id: null,
             price_usd: newCrypto.priceUSD || 0,
             quantity: newCrypto.quantity || 0,
             total_usd: calculatedTotalUSD,
             total_brl: calculatedTotalUSD * usdToBRL,
-            custody_id: null, // This would be replaced with actual custody ID
-            portfolio_percentage: 0, // Will be calculated later
+            custody_id: null,
+            portfolio_percentage: 0,
             change_percentage: 0,
           }
         ])
@@ -225,9 +259,9 @@ const CryptoPage = () => {
 
   const metrics = calculateCryptoMetrics(crypto);
   
-  // Calcular o total em stablecoins
+  // Calcular o total em stablecoins - filtrar por setor "Stablecoins"
   const stablecoinTotal = crypto
-    .filter(asset => asset.sector.toLowerCase() === "stablecoins")
+    .filter(asset => asset.sector.toLowerCase().includes("stablecoin"))
     .reduce((total, asset) => total + asset.totalUSD, 0);
 
   if (loading) {
