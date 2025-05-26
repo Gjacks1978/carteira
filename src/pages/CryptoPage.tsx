@@ -12,8 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 import { AllocationBySectorCard } from "@/components/crypto/AllocationBySectorCard";
-
-const USD_TO_BRL_RATE = 5.05; // Define at component level for broader access
+import { fetchUSDtoBRLRate, ExchangeRateData, FALLBACK_USD_TO_BRL_RATE } from "@/lib/utils";
 
 const CryptoPage = () => {
   const [crypto, setCrypto] = useState<Crypto[]>([]);
@@ -21,38 +20,45 @@ const CryptoPage = () => {
   const [newCrypto, setNewCrypto] = useState<Partial<Crypto>>({
     ticker: "",
     name: "",
-    sector: "", // Mantido como string para o formulário, se usado
+    sector: "", 
     priceUSD: 0,
     quantity: 0,
     totalUSD: 0,
     totalBRL: 0,
-    custody: "", // Mantido como string para o formulário, se usado
+    custody: "", 
   });
   const [loading, setLoading] = useState(true);
-  const [sectors, setSectors] = useState<{[key: string]: string}>({}); // Map: id -> name
-  const [custodies, setCustodies] = useState<{[key: string]: string}>({}); // Map: id -> name
+  const [sectors, setSectors] = useState<{[key: string]: string}>({}); 
+  const [custodies, setCustodies] = useState<{[key: string]: string}>({}); 
+  const [exchangeRateInfo, setExchangeRateInfo] = useState<ExchangeRateData>({ rate: FALLBACK_USD_TO_BRL_RATE, isReal: false }); 
   const { toast } = useToast();
   const { user } = useAuth();
   
-  // useEffect para carregar dados de forma orquestrada
+  useEffect(() => {
+    const getRate = async () => {
+      const data = await fetchUSDtoBRLRate(); 
+      setExchangeRateInfo(data);
+    };
+    getRate();
+  }, []);
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      // fetchSectorsAndCustodies agora também define os estados sectors e custodies internamente
       await fetchSectorsAndCustodies(); 
-      await fetchCryptoAssets(); // fetchCryptoAssets usará os estados sectors e custodies
+      await fetchCryptoAssets(); 
       setLoading(false);
     };
 
     if (user) {
       loadData();
     } else {
-      setCrypto([]); // Limpa os dados se não houver usuário
+      setCrypto([]); 
       setSectors({});
       setCustodies({});
       setLoading(false);
     }
-  }, [user]); // Dependência no usuário para recarregar se o usuário mudar
+  }, [user, exchangeRateInfo.rate]); 
 
   const fetchSectorsAndCustodies = async () => {
     try {
@@ -85,7 +91,6 @@ const CryptoPage = () => {
         title: "Erro ao carregar dados auxiliares",
         description: "Não foi possível carregar setores e custódias."
       });
-      // Retorna mapas vazios em caso de erro para evitar quebras
       setSectors({}); 
       setCustodies({});
     }
@@ -96,11 +101,10 @@ const CryptoPage = () => {
       setCrypto([]);
       return;
     }
-    // setLoading(true); // Movido para loadData
     try {
       const { data, error } = await supabase
         .from("crypto_assets")
-        .select("*, sectors(id, name), custodies(id, name)") // Usando JOINs
+        .select("*, sectors(id, name), custodies(id, name)") 
         .eq("user_id", user.id);
       
       if (error) throw error;
@@ -110,12 +114,12 @@ const CryptoPage = () => {
           id: item.id,
           ticker: item.ticker,
           name: item.name,
-          sector: item.sectors ? item.sectors.name : "Outros", // Nome do setor via JOIN
+          sector: item.sectors ? item.sectors.name : "Outros", 
           priceUSD: Number(item.price_usd),
           quantity: Number(item.quantity),
           totalUSD: Number(item.total_usd),
-          totalBRL: Number(item.total_usd) * USD_TO_BRL_RATE,
-          custody: item.custodies ? item.custodies.name : "Carteira Local", // Nome da custódia via JOIN
+          totalBRL: Number(item.total_usd) * exchangeRateInfo.rate, 
+          custody: item.custodies ? item.custodies.name : "Carteira Local", 
           portfolioPercentage: Number(item.portfolio_percentage),
           changePercentage: Number(item.change_percentage),
         }));
@@ -129,11 +133,8 @@ const CryptoPage = () => {
         title: "Erro ao carregar criptoativos",
         description: "Não foi possível carregar a lista de criptoativos."
       });
-      setCrypto([]); // Fallback para array vazio em caso de erro
+      setCrypto([]); 
     } 
-    // finally {
-    //   setLoading(false); // Movido para loadData
-    // }
   };
   
   const handleAddCrypto = async () => {
@@ -149,8 +150,6 @@ const CryptoPage = () => {
 
     const calculatedTotalUSD = (newCrypto.priceUSD || 0) * (newCrypto.quantity || 0);
     
-    // Encontrar IDs para setor e custódia se nomes foram fornecidos no formulário newCrypto
-    // Atualmente, newCrypto.sector e newCrypto.custody são strings vazias por padrão
     const sectorId = Object.keys(sectors).find(id => sectors[id] === newCrypto.sector) || null;
     const custodyId = Object.keys(custodies).find(id => custodies[id] === newCrypto.custody) || null;
 
@@ -162,17 +161,17 @@ const CryptoPage = () => {
             user_id: user.id,
             ticker: newCrypto.ticker,
             name: newCrypto.name,
-            sector_id: sectorId, // Usar ID encontrado ou null
+            sector_id: sectorId, 
             price_usd: newCrypto.priceUSD || 0,
             quantity: newCrypto.quantity || 0,
             total_usd: calculatedTotalUSD,
-            total_brl: calculatedTotalUSD * USD_TO_BRL_RATE,
-            custody_id: custodyId, // Usar ID encontrado ou null
-            portfolio_percentage: 0, // Pode precisar de lógica de atualização separada
+            total_brl: calculatedTotalUSD * exchangeRateInfo.rate, 
+            custody_id: custodyId, 
+            portfolio_percentage: 0, 
             change_percentage: 0,
           }
         ])
-        .select("*, sectors(id, name), custodies(id, name)") // Usar JOINs ao selecionar de volta
+        .select("*, sectors(id, name), custodies(id, name)") 
         .single();
       
       if (error) throw error;
@@ -186,7 +185,7 @@ const CryptoPage = () => {
           priceUSD: Number(data.price_usd),
           quantity: Number(data.quantity),
           totalUSD: Number(data.total_usd),
-          totalBRL: Number(data.total_brl),
+          totalBRL: Number(data.total_brl), 
           custody: data.custodies ? data.custodies.name : (newCrypto.custody || "Carteira Local"),
           portfolioPercentage: 0,
           changePercentage: 0,
@@ -223,7 +222,6 @@ const CryptoPage = () => {
   const handleUpdateCrypto = async (updatedCrypto: Crypto) => {
     if (!user) return;
 
-    // Encontrar IDs de setor e custódia a partir dos nomes
     const sectorId = Object.keys(sectors).find(id => sectors[id] === updatedCrypto.sector) || null;
     const custodyId = Object.keys(custodies).find(id => custodies[id] === updatedCrypto.custody) || null;
 
@@ -236,17 +234,16 @@ const CryptoPage = () => {
           price_usd: updatedCrypto.priceUSD,
           quantity: updatedCrypto.quantity,
           total_usd: updatedCrypto.totalUSD,
-          total_brl: updatedCrypto.totalBRL,
-          sector_id: sectorId,     // Atualizar com o ID do setor
-          custody_id: custodyId,   // Atualizar com o ID da custódia
+          total_brl: updatedCrypto.totalUSD * exchangeRateInfo.rate, 
+          sector_id: sectorId, 
+          custody_id: custodyId, 
           // portfolio_percentage e change_percentage podem precisar de lógica de atualização separada
         })
         .eq("id", updatedCrypto.id)
-        .eq("user_id", user.id); // Garantir que o usuário só atualize seus próprios ativos
+        .eq("user_id", user.id); 
 
       if (error) throw error;
 
-      // Atualizar estado local para refletir a mudança imediatamente
       setCrypto(prevCrypto =>
         prevCrypto.map(c => (c.id === updatedCrypto.id ? updatedCrypto : c))
       );
@@ -274,7 +271,7 @@ const CryptoPage = () => {
         .from("crypto_assets")
         .delete()
         .eq("id", id)
-        .eq("user_id", user.id); // Garante que o usuário só delete seus próprios ativos
+        .eq("user_id", user.id); 
       
       if (error) throw error;
       
@@ -296,7 +293,6 @@ const CryptoPage = () => {
     }
   };
 
-  // Funções para adicionar/remover setores da lista de opções
   const handleAddSector = async (sectorName: string) => {
     if (!user || !sectorName.trim()) return;
     const trimmedName = sectorName.trim();
@@ -307,14 +303,14 @@ const CryptoPage = () => {
     }
     try {
       const { data, error } = await supabase
-        .from('sectors') // Assume que a tabela 'sectors' tem 'user_id'
+        .from('sectors') 
         .insert({ name: trimmedName, user_id: user.id })
         .select()
         .single();
       if (error) throw error;
       if (data) {
         toast({ title: "Setor adicionado", description: `Setor "${data.name}" adicionado.` });
-        await fetchSectorsAndCustodies(); // Recarrega setores e custódias
+        await fetchSectorsAndCustodies(); 
       }
     } catch (error) {
       console.error("Error adding sector:", error);
@@ -353,7 +349,6 @@ const CryptoPage = () => {
     }
   };
 
-  // Funções para adicionar/remover custódias da lista de opções
   const handleAddCustody = async (custodyName: string) => {
     if (!user || !custodyName.trim()) return;
     const trimmedName = custodyName.trim();
@@ -364,7 +359,7 @@ const CryptoPage = () => {
     }
     try {
       const { data, error } = await supabase
-        .from('custodies') // Assume que a tabela 'custodies' tem 'user_id'
+        .from('custodies') 
         .insert({ name: trimmedName, user_id: user.id })
         .select()
         .single();
@@ -410,12 +405,13 @@ const CryptoPage = () => {
     }
   };
 
-  const metrics = calculateCryptoMetrics(crypto);
+  const metrics = calculateCryptoMetrics(crypto); 
   
-  // Calcular o total em stablecoins - filtrar por setor "Stablecoins"
   const stablecoinTotal = crypto
     .filter(asset => asset.sector.toLowerCase().includes("stablecoin"))
     .reduce((total, asset) => total + asset.totalUSD, 0);
+
+  const totalCryptoValueBRL = metrics.totalBRL; 
 
   if (loading) {
     return (
@@ -477,7 +473,7 @@ const CryptoPage = () => {
               Total em Stablecoins (USD)
             </p>
             <p className="text-xs text-muted-foreground pt-1">
-              {(stablecoinTotal * USD_TO_BRL_RATE).toLocaleString("pt-BR", {
+              {(stablecoinTotal * exchangeRateInfo.rate).toLocaleString("pt-BR", {
                 style: "currency",
                 currency: "BRL",
               })}
@@ -546,7 +542,7 @@ const CryptoPage = () => {
                       ...newCrypto, 
                       priceUSD,
                       totalUSD,
-                      totalBRL: totalUSD * USD_TO_BRL_RATE // Use component-level constant
+                      totalBRL: totalUSD * exchangeRateInfo.rate 
                     });
                   },
                 },
@@ -564,7 +560,7 @@ const CryptoPage = () => {
                       ...newCrypto, 
                       quantity,
                       totalUSD,
-                      totalBRL: totalUSD * USD_TO_BRL_RATE // Use component-level constant
+                      totalBRL: totalUSD * exchangeRateInfo.rate 
                     });
                   },
                 },

@@ -25,6 +25,7 @@ import QuickStats from "./QuickStats";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
+import { fetchUSDtoBRLRate, FALLBACK_USD_TO_BRL_RATE } from "@/lib/utils";
 
 const InvestmentDashboard = () => {
   const [period, setPeriod] = useState<"1m" | "3m" | "6m" | "1y" | "all">("1y");
@@ -56,7 +57,10 @@ const InvestmentDashboard = () => {
     try {
       setLoading(true);
 
-      // Fetch assets data with categories
+      // Buscar cotação do dólar PRIMEIRO
+      const { rate: dollarRate, isReal: isDollarRateReal } = await fetchUSDtoBRLRate();
+
+      // Fetch assets data
       const { data: assetsData, error: assetsError } = await supabase
         .from("assets")
         .select(`
@@ -67,7 +71,7 @@ const InvestmentDashboard = () => {
 
       if (assetsError) throw assetsError;
 
-      // Fetch crypto assets data with sectors and custodies
+      // Fetch crypto assets data
       const { data: cryptoData, error: cryptoError } = await supabase
         .from("crypto_assets")
         .select(`
@@ -83,38 +87,41 @@ const InvestmentDashboard = () => {
       const assetsTotal = assetsData?.reduce((sum, asset) => sum + Number(asset.total), 0) || 0;
       const assetsReturn = assetsData?.reduce((sum, asset) => sum + Number(asset.return_value || 0), 0) || 0;
       
-      // Calculate crypto totals
-      const cryptoTotalBRL = cryptoData?.reduce((sum, crypto) => sum + Number(crypto.total_brl || 0), 0) || 0;
+      // Calculate crypto totals USANDO A COTAÇÃO ATUAL
+      const cryptoTotalBRL = cryptoData?.reduce((sum, crypto) => {
+        const totalUsd = Number(crypto.total_usd || (crypto.price_usd * crypto.quantity) || 0); 
+        return sum + (totalUsd * dollarRate);
+      }, 0) || 0;
       
-      // For crypto return, we'll calculate based on change_percentage and total_brl
+      // Calculate crypto return USANDO A COTAÇÃO ATUAL
       const cryptoReturn = cryptoData?.reduce((sum, crypto) => {
-        const totalBrl = Number(crypto.total_brl || 0); // Keep using stored total_brl for return calc for now
+        const totalUsdForReturn = Number(crypto.total_usd || (crypto.price_usd * crypto.quantity) || 0);
         const changePerc = Number(crypto.change_percentage || 0);
-        return sum + (totalBrl * changePerc / 100);
+        const returnInUsd = totalUsdForReturn * (changePerc / 100);
+        return sum + (returnInUsd * dollarRate); // Converte o lucro/prejuízo em USD para BRL
       }, 0) || 0;
       
       const totalInvested = assetsTotal + cryptoTotalBRL;
-      const totalReturn = assetsReturn + cryptoReturn;
+      const totalReturn = assetsReturn + cryptoReturn; 
       const returnPercentage = totalInvested > 0 ? (totalReturn / totalInvested) * 100 : 0;
 
       // Calculate portfolio allocation by category/sector
       const portfolioAllocation = [];
       
-      // Group assets by category
       const assetsByCategory = assetsData?.reduce((acc, asset) => {
         const categoryName = asset.asset_categories?.name || "Outros";
         acc[categoryName] = (acc[categoryName] || 0) + Number(asset.total);
         return acc;
       }, {} as Record<string, number>) || {};
 
-      // Group crypto by sector
       const cryptoBySector = cryptoData?.reduce((acc, crypto) => {
         const sectorName = crypto.sectors?.name || "Criptomoedas";
-        acc[sectorName] = (acc[sectorName] || 0) + Number(crypto.total_brl);
+        const totalUsd = Number(crypto.total_usd || (crypto.price_usd * crypto.quantity) || 0);
+        const currentTotalBrlForSector = totalUsd * dollarRate;
+        acc[sectorName] = (acc[sectorName] || 0) + currentTotalBrlForSector;
         return acc;
       }, {} as Record<string, number>) || {};
 
-      // Combine allocations
       Object.entries(assetsByCategory).forEach(([category, value]) => {
         if (value > 0) {
           portfolioAllocation.push({
