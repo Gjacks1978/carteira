@@ -1,13 +1,15 @@
 
 import { useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Loader2 } from "lucide-react";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import AddAssetForm from "@/components/assets/AddAssetForm";
-import AssetTab from "@/components/assets/AssetTab";
+import AssetsSummaryCards from "@/components/assets/AssetsSummaryCards";
+import AssetCategorySection from "@/components/assets/AssetCategorySection";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Asset } from "@/types/assets";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Category {
   id: string;
@@ -16,55 +18,80 @@ interface Category {
 
 const AssetsPage = () => {
   const [categories, setCategories] = useState<Category[]>([]);
-  const [activeTab, setActiveTab] = useState<string | null>(null);
-  const [isAddTabDialogOpen, setIsAddTabDialogOpen] = useState(false);
-  const [newTabName, setNewTabName] = useState("");
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [isAddCategoryDialogOpen, setIsAddCategoryDialogOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
-    fetchCategories();
+    fetchCategoriesAndAssets();
   }, []);
 
-  const fetchCategories = async () => {
+  const fetchCategoriesAndAssets = async () => {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase
+      // Buscar categorias
+      const { data: categoriesData, error: categoriesError } = await supabase
         .from("asset_categories")
         .select("id, name")
         .order("is_default", { ascending: false })
         .order("name");
       
-      if (error) throw error;
+      if (categoriesError) throw categoriesError;
       
-      if (data && data.length > 0) {
-        setCategories(data);
-        setActiveTab(data[0].id);
+      // Buscar todos os ativos
+      const { data: assetsData, error: assetsError } = await supabase
+        .from("assets")
+        .select("*");
+      
+      if (assetsError) throw assetsError;
+      
+      if (categoriesData) {
+        setCategories(categoriesData);
+      }
+      
+      if (assetsData) {
+        const transformedAssets = assetsData.map(item => ({
+          id: item.id,
+          name: item.name,
+          ticker: item.ticker,
+          type: item.type,
+          price: Number(item.price),
+          quantity: Number(item.quantity),
+          total: Number(item.total),
+          return: Number(item.return_value),
+          returnPercentage: Number(item.return_percentage),
+          categoryId: item.category_id,
+        }));
+        
+        setAssets(transformedAssets);
       }
     } catch (error) {
-      console.error("Error fetching categories:", error);
+      console.error("Error fetching data:", error);
       toast({
         variant: "destructive",
-        title: "Erro ao carregar categorias",
-        description: "Não foi possível carregar as categorias de ativos."
+        title: "Erro ao carregar dados",
+        description: "Não foi possível carregar as categorias e ativos."
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddTab = async () => {
-    if (newTabName.trim() === "") {
+  const handleAddCategory = async () => {
+    if (newCategoryName.trim() === "") {
       toast({
         variant: "destructive",
         title: "Erro",
-        description: "O nome da aba não pode estar vazio",
+        description: "O nome da categoria não pode estar vazio",
       });
       return;
     }
 
-    if (categories.some((cat) => cat.name.toLowerCase() === newTabName.toLowerCase())) {
+    if (categories.some((cat) => cat.name.toLowerCase() === newCategoryName.toLowerCase())) {
       toast({
         variant: "destructive",
         title: "Erro",
@@ -76,26 +103,20 @@ const AssetsPage = () => {
     try {
       const { data, error } = await supabase
         .from("asset_categories")
-        .insert([{ name: newTabName, is_default: false }])
+        .insert([{ name: newCategoryName, is_default: false }])
         .select()
         .single();
       
       if (error) throw error;
       
       if (data) {
-        const newCategory: Category = {
-          id: data.id,
-          name: data.name
-        };
-        
-        setCategories([...categories, newCategory]);
-        setActiveTab(data.id);
-        setNewTabName("");
-        setIsAddTabDialogOpen(false);
+        setCategories([...categories, { id: data.id, name: data.name }]);
+        setNewCategoryName("");
+        setIsAddCategoryDialogOpen(false);
         
         toast({
           title: "Categoria adicionada",
-          description: `A categoria "${newTabName}" foi adicionada com sucesso`,
+          description: `A categoria "${newCategoryName}" foi adicionada com sucesso`,
         });
       }
     } catch (error) {
@@ -103,9 +124,135 @@ const AssetsPage = () => {
       toast({
         variant: "destructive",
         title: "Erro ao adicionar categoria",
-        description: "Não foi possível adicionar a categoria. Tente novamente."
+        description: "Não foi possível adicionar a categoria."
       });
     }
+  };
+
+  const handleAddAsset = async (categoryId: string, newAsset: Partial<Asset>) => {
+    try {
+      const { data, error } = await supabase
+        .from("assets")
+        .insert([
+          {
+            user_id: user?.id,
+            name: newAsset.name,
+            ticker: newAsset.ticker,
+            type: newAsset.type || "Outros",
+            price: newAsset.price || 0,
+            quantity: newAsset.quantity || 0,
+            total: newAsset.total || 0,
+            return_value: 0,
+            return_percentage: 0,
+            category_id: categoryId
+          }
+        ])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      if (data) {
+        const newAssetItem: Asset = {
+          id: data.id,
+          name: data.name,
+          ticker: data.ticker,
+          type: data.type,
+          price: Number(data.price),
+          quantity: Number(data.quantity),
+          total: Number(data.total),
+          return: Number(data.return_value),
+          returnPercentage: Number(data.return_percentage),
+          categoryId: data.category_id,
+        };
+        
+        setAssets([...assets, newAssetItem]);
+        
+        toast({
+          title: "Ativo adicionado",
+          description: `${newAssetItem.name} foi adicionado com sucesso`,
+        });
+      }
+    } catch (error) {
+      console.error("Error adding asset:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao adicionar ativo",
+        description: "Não foi possível adicionar o ativo."
+      });
+    }
+  };
+
+  const handleUpdateAsset = async (updatedAsset: Asset) => {
+    try {
+      const { error } = await supabase
+        .from("assets")
+        .update({
+          name: updatedAsset.name,
+          ticker: updatedAsset.ticker,
+          type: updatedAsset.type,
+          price: updatedAsset.price,
+          quantity: updatedAsset.quantity,
+          total: updatedAsset.total,
+          return_value: updatedAsset.return,
+          return_percentage: updatedAsset.returnPercentage
+        })
+        .eq("id", updatedAsset.id);
+      
+      if (error) throw error;
+      
+      const updatedAssets = assets.map((asset) =>
+        asset.id === updatedAsset.id ? updatedAsset : asset
+      );
+      
+      setAssets(updatedAssets);
+      
+      toast({
+        title: "Ativo atualizado",
+        description: `${updatedAsset.name} foi atualizado com sucesso`
+      });
+    } catch (error) {
+      console.error("Error updating asset:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao atualizar ativo",
+        description: "Não foi possível atualizar o ativo."
+      });
+    }
+  };
+
+  const handleDeleteAsset = async (id: string) => {
+    try {
+      const assetToDelete = assets.find((asset) => asset.id === id);
+      
+      const { error } = await supabase
+        .from("assets")
+        .delete()
+        .eq("id", id);
+      
+      if (error) throw error;
+      
+      const updatedAssets = assets.filter((asset) => asset.id !== id);
+      setAssets(updatedAssets);
+      
+      if (assetToDelete) {
+        toast({
+          title: "Ativo removido",
+          description: `${assetToDelete.name} foi removido com sucesso`,
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting asset:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao remover ativo",
+        description: "Não foi possível remover o ativo."
+      });
+    }
+  };
+
+  const getAssetsByCategory = (categoryId: string) => {
+    return assets.filter(asset => asset.categoryId === categoryId);
   };
 
   if (loading) {
@@ -125,56 +272,56 @@ const AssetsPage = () => {
             Gerenciamento dos seus investimentos
           </p>
         </div>
+        <Dialog open={isAddCategoryDialogOpen} onOpenChange={setIsAddCategoryDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Nova Categoria
+            </Button>
+          </DialogTrigger>
+          <AddAssetForm
+            title="Adicionar Nova Categoria"
+            description="Crie uma nova categoria para seus ativos."
+            inputLabel="Nome da Categoria"
+            inputPlaceholder="Ex: Imóveis, Previdência, etc."
+            buttonLabel="Adicionar Categoria"
+            inputValue={newCategoryName}
+            onInputChange={(e) => setNewCategoryName(e.target.value)}
+            onSubmit={handleAddCategory}
+          />
+        </Dialog>
       </div>
 
+      {/* Cards de resumo */}
+      <AssetsSummaryCards assets={assets} />
+
+      {/* Seções por categoria */}
       {categories.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12">
           <p className="text-muted-foreground mb-4">Nenhuma categoria encontrada</p>
-          <Button onClick={() => setIsAddTabDialogOpen(true)}>
+          <Button onClick={() => setIsAddCategoryDialogOpen(true)}>
             <PlusCircle className="mr-2 h-4 w-4" />
             Adicionar Categoria
           </Button>
         </div>
       ) : (
-        <Tabs value={activeTab || undefined} onValueChange={setActiveTab} className="w-full">
-          <div className="flex items-center justify-between mb-4">
-            <TabsList className="flex-grow overflow-x-auto">
-              {categories.map((category) => (
-                <TabsTrigger key={category.id} value={category.id} className="capitalize">
-                  {category.name}
-                </TabsTrigger>
-              ))}
-            </TabsList>
+        <div className="space-y-6">
+          {categories.map((category) => {
+            const categoryAssets = getAssetsByCategory(category.id);
             
-            <Dialog open={isAddTabDialogOpen} onOpenChange={setIsAddTabDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="ml-2">
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                  Nova Categoria
-                </Button>
-              </DialogTrigger>
-              <AddAssetForm
-                title="Adicionar Nova Categoria"
-                description="Crie uma nova categoria para seus ativos."
-                inputLabel="Nome da Categoria"
-                inputPlaceholder="Ex: Imóveis, Previdência, etc."
-                buttonLabel="Adicionar Categoria"
-                inputValue={newTabName}
-                onInputChange={(e) => setNewTabName(e.target.value)}
-                onSubmit={handleAddTab}
-              />
-            </Dialog>
-          </div>
-
-          {categories.map((category) => (
-            <TabsContent key={category.id} value={category.id}>
-              <AssetTab 
-                tabId={category.id} 
+            return (
+              <AssetCategorySection
+                key={category.id}
+                categoryName={category.name}
                 categoryId={category.id}
+                assets={categoryAssets}
+                onAddAsset={(newAsset) => handleAddAsset(category.id, newAsset)}
+                onUpdateAsset={handleUpdateAsset}
+                onDeleteAsset={handleDeleteAsset}
               />
-            </TabsContent>
-          ))}
-        </Tabs>
+            );
+          })}
+        </div>
       )}
     </div>
   );

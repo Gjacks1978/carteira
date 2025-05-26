@@ -1,4 +1,3 @@
-
 export interface Asset {
   id: string;
   name: string;
@@ -9,6 +8,7 @@ export interface Asset {
   total: number;
   return: number;
   returnPercentage: number;
+  categoryId?: string;
 }
 
 export interface Crypto {
