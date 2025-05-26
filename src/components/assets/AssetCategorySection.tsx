@@ -144,7 +144,7 @@ const AssetCategorySection = ({
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="bg-zinc-100">
           <AssetsTable assets={assets} onUpdate={onUpdateAsset} onDelete={onDeleteAsset} />
         </CardContent>
       </Card>
