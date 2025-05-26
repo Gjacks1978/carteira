@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Loader2 } from "lucide-react";
@@ -10,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Asset } from "@/types/assets";
 import { useAuth } from "@/contexts/AuthContext";
+import { AllocationByClassCard } from "@/components/assets/AllocationByClassCard";
 
 interface Category {
   id: string;
@@ -257,26 +257,22 @@ const AssetsPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
+      <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Ativos</h2>
-          <p className="text-muted-foreground">
-            Gerenciamento dos seus investimentos
-          </p>
-        </div>
+    <div className="container mx-auto p-4 md:p-6 lg:p-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+        <h1 className="text-2xl font-semibold tracking-tight mb-2 sm:mb-0">
+          Meus Ativos
+        </h1>
         <Dialog open={isAddCategoryDialogOpen} onOpenChange={setIsAddCategoryDialogOpen}>
           <DialogTrigger asChild>
             <Button>
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Nova Categoria
+              <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Categoria
             </Button>
           </DialogTrigger>
           <AddAssetForm
@@ -292,10 +288,18 @@ const AssetsPage = () => {
         </Dialog>
       </div>
 
-      {/* Cards de resumo */}
-      <AssetsSummaryCards assets={assets} />
+      {/* Grid para os cards de resumo e alocação */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* AssetsSummaryCards ocupará 2 colunas em telas médias e grandes, 1 em pequenas */}
+        <div className="md:col-span-2">
+          <AssetsSummaryCards assets={assets} /> 
+        </div>
+        {/* AllocationByClassCard ocupará 1 coluna em telas médias e grandes, 1 em pequenas */}
+        <div className="md:col-span-1">
+          <AllocationByClassCard assets={assets} />
+        </div>
+      </div>
 
-      {/* Seções por categoria */}
       {categories.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12">
           <p className="text-muted-foreground mb-4">Nenhuma categoria encontrada</p>

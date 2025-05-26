@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import {
   Table,
@@ -20,37 +19,37 @@ import { Input } from "@/components/ui/input";
 import { Edit2, Trash2 } from "lucide-react";
 import { Crypto } from "@/types/assets";
 import { EditableCell } from "@/components/ui/editable-cell";
-import { EditableSelectCell } from "@/components/ui/editable-select-cell";
+import { EditableSelectCell } from "../ui/editable-select-cell";
 
 interface CryptoTableProps {
-  crypto: Crypto[];
-  onUpdate: (crypto: Crypto) => void;
-  onDelete: (id: string) => void;
+  data: Crypto[];
+  onUpdateRow: (crypto: Crypto) => void;
+  onDeleteRow: (id: string) => void;
+  sectors: string[];
+  custodies: string[];
+  onAddSector: (sectorName: string) => void;
+  onRemoveSector: (sectorName: string) => void;
+  onAddCustody: (custodyName: string) => void;
+  onRemoveCustody: (custodyName: string) => void;
 }
 
-const CryptoTable = ({ crypto, onUpdate, onDelete }: CryptoTableProps) => {
+const CryptoTable = ({
+  data,
+  onUpdateRow,
+  onDeleteRow,
+  sectors,
+  custodies,
+  onAddSector,
+  onRemoveSector,
+  onAddCustody,
+  onRemoveCustody,
+}: CryptoTableProps) => {
   const [editingCrypto, setEditingCrypto] = useState<Crypto | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [cryptoToDelete, setCryptoToDelete] = useState<string | null>(null);
-  const [sectors, setSectors] = useState<string[]>([
-    "Store of Value",
-    "Smart Contracts",
-    "DeFi",
-    "NFTs",
-    "Stablecoins",
-    "Outros"
-  ]);
-  const [custodies, setCustodies] = useState<string[]>([
-    "Carteira Local",
-    "Binance",
-    "Coinbase",
-    "FTX",
-    "Kraken",
-    "Outro"
-  ]);
 
-  const usdToBRL = 5.05; // Mock exchange rate
+  const usdToBRL = 5.05; // Mock exchange rate - consider moving to a shared config or prop if dynamic
 
   const handleEdit = (asset: Crypto) => {
     setEditingCrypto({ ...asset });
@@ -65,7 +64,7 @@ const CryptoTable = ({ crypto, onUpdate, onDelete }: CryptoTableProps) => {
         totalUSD: editingCrypto.priceUSD * editingCrypto.quantity,
         totalBRL: editingCrypto.priceUSD * editingCrypto.quantity * usdToBRL,
       };
-      onUpdate(updatedCrypto);
+      onUpdateRow(updatedCrypto);
       setIsEditDialogOpen(false);
       setEditingCrypto(null);
     }
@@ -78,56 +77,28 @@ const CryptoTable = ({ crypto, onUpdate, onDelete }: CryptoTableProps) => {
 
   const handleConfirmDelete = () => {
     if (cryptoToDelete) {
-      onDelete(cryptoToDelete);
+      onDeleteRow(cryptoToDelete);
       setIsDeleteDialogOpen(false);
       setCryptoToDelete(null);
     }
   };
 
   const updateCryptoField = (id: string, field: keyof Crypto, value: any) => {
-    const cryptoToUpdate = crypto.find(item => item.id === id);
+    const cryptoToUpdate = data.find((item) => item.id === id);
     if (!cryptoToUpdate) return;
 
     const updatedCrypto = { ...cryptoToUpdate, [field]: value };
-    
+
     // Recalculate totals if price or quantity changes
-    if (field === 'priceUSD' || field === 'quantity') {
+    if (field === "priceUSD" || field === "quantity") {
       updatedCrypto.totalUSD = updatedCrypto.priceUSD * updatedCrypto.quantity;
       updatedCrypto.totalBRL = updatedCrypto.totalUSD * usdToBRL;
     }
-    
-    onUpdate(updatedCrypto);
+
+    onUpdateRow(updatedCrypto);
   };
 
-  const addSector = (newSector: string) => {
-    if (!sectors.includes(newSector)) {
-      setSectors([...sectors, newSector]);
-    }
-  };
-
-  const removeSector = (sectorToRemove: string) => {
-    // Only remove if not in use
-    const isInUse = crypto.some(item => item.sector === sectorToRemove);
-    if (!isInUse) {
-      setSectors(sectors.filter(s => s !== sectorToRemove));
-    }
-  };
-
-  const addCustody = (newCustody: string) => {
-    if (!custodies.includes(newCustody)) {
-      setCustodies([...custodies, newCustody]);
-    }
-  };
-
-  const removeCustody = (custodyToRemove: string) => {
-    // Only remove if not in use
-    const isInUse = crypto.some(item => item.custody === custodyToRemove);
-    if (!isInUse) {
-      setCustodies(custodies.filter(c => c !== custodyToRemove));
-    }
-  };
-
-  if (crypto.length === 0) {
+  if (data.length === 0) {
     return (
       <div className="py-12 text-center">
         <p className="text-muted-foreground">
@@ -154,45 +125,47 @@ const CryptoTable = ({ crypto, onUpdate, onDelete }: CryptoTableProps) => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {crypto.map((asset) => (
+            {data.map((asset) => (
               <TableRow key={asset.id}>
                 <TableCell className="font-medium">
                   <EditableCell
                     value={asset.name}
-                    onUpdate={(value) => updateCryptoField(asset.id, 'name', value)}
+                    onUpdate={(value) => updateCryptoField(asset.id, "name", value)}
                   />
                 </TableCell>
                 <TableCell>
                   <EditableCell
                     value={asset.ticker}
-                    onUpdate={(value) => updateCryptoField(asset.id, 'ticker', value)}
+                    onUpdate={(value) => updateCryptoField(asset.id, "ticker", value)}
                   />
                 </TableCell>
                 <TableCell>
                   <EditableSelectCell
                     value={asset.sector}
                     options={sectors}
-                    onUpdate={(value) => updateCryptoField(asset.id, 'sector', value)}
-                    onAddOption={addSector}
-                    onRemoveOption={removeSector}
+                    onUpdate={(value) => updateCryptoField(asset.id, "sector", value)}
+                    onAddOption={onAddSector}
+                    onRemoveOption={onRemoveSector}
                   />
                 </TableCell>
                 <TableCell className="text-right">
                   <EditableCell
                     value={asset.priceUSD}
-                    onUpdate={(value) => updateCryptoField(asset.id, 'priceUSD', Number(value))}
+                    onUpdate={(value) => updateCryptoField(asset.id, "priceUSD", Number(value))}
                     type="number"
-                    formatter={(val) => Number(val).toLocaleString("en-US", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
+                    formatter={(val) =>
+                      Number(val).toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })
+                    }
                     className="text-right"
                   />
                 </TableCell>
                 <TableCell className="text-right">
                   <EditableCell
                     value={asset.quantity}
-                    onUpdate={(value) => updateCryptoField(asset.id, 'quantity', Number(value))}
+                    onUpdate={(value) => updateCryptoField(asset.id, "quantity", Number(value))}
                     type="number"
                     className="text-right"
                   />
@@ -207,18 +180,28 @@ const CryptoTable = ({ crypto, onUpdate, onDelete }: CryptoTableProps) => {
                   <EditableSelectCell
                     value={asset.custody}
                     options={custodies}
-                    onUpdate={(value) => updateCryptoField(asset.id, 'custody', value)}
-                    onAddOption={addCustody}
-                    onRemoveOption={removeCustody}
+                    onUpdate={(value) => updateCryptoField(asset.id, "custody", value)}
+                    onAddOption={onAddCustody}
+                    onRemoveOption={onRemoveCustody}
                   />
                 </TableCell>
                 <TableCell className="text-center">
                   <div className="flex justify-center space-x-2">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(asset)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleEdit(asset)}
+                    >
                       <Edit2 className="h-4 w-4" />
                       <span className="sr-only">Editar</span>
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDeleteClick(asset.id)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() => handleDeleteClick(asset.id)}
+                    >
                       <Trash2 className="h-4 w-4" />
                       <span className="sr-only">Excluir</span>
                     </Button>

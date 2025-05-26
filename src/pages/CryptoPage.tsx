@@ -21,79 +21,101 @@ const CryptoPage = () => {
   const [newCrypto, setNewCrypto] = useState<Partial<Crypto>>({
     ticker: "",
     name: "",
-    sector: "",
+    sector: "", // Mantido como string para o formulário, se usado
     priceUSD: 0,
     quantity: 0,
     totalUSD: 0,
     totalBRL: 0,
-    custody: "",
+    custody: "", // Mantido como string para o formulário, se usado
   });
   const [loading, setLoading] = useState(true);
-  const [sectors, setSectors] = useState<{[key: string]: string}>({});
-  const [custodies, setCustodies] = useState<{[key: string]: string}>({});
+  const [sectors, setSectors] = useState<{[key: string]: string}>({}); // Map: id -> name
+  const [custodies, setCustodies] = useState<{[key: string]: string}>({}); // Map: id -> name
   const { toast } = useToast();
   const { user } = useAuth();
   
+  // useEffect para carregar dados de forma orquestrada
   useEffect(() => {
-    fetchCryptoAssets();
-    fetchSectorsAndCustodies();
-  }, []);
+    const loadData = async () => {
+      setLoading(true);
+      // fetchSectorsAndCustodies agora também define os estados sectors e custodies internamente
+      await fetchSectorsAndCustodies(); 
+      await fetchCryptoAssets(); // fetchCryptoAssets usará os estados sectors e custodies
+      setLoading(false);
+    };
+
+    if (user) {
+      loadData();
+    } else {
+      setCrypto([]); // Limpa os dados se não houver usuário
+      setSectors({});
+      setCustodies({});
+      setLoading(false);
+    }
+  }, [user]); // Dependência no usuário para recarregar se o usuário mudar
 
   const fetchSectorsAndCustodies = async () => {
     try {
-      // Fetch sectors
-      const { data: sectorsData } = await supabase
+      const { data: sectorsData, error: sectorsError } = await supabase
         .from("sectors")
-        .select("*");
+        .select("id, name");
+      if (sectorsError) throw sectorsError;
       
-      if (sectorsData) {
-        const sectorsMap = sectorsData.reduce((acc, sector) => {
-          acc[sector.id] = sector.name;
-          return acc;
-        }, {});
-        setSectors(sectorsMap);
-      }
+      const sectorsMap = sectorsData?.reduce((acc, sector) => {
+        acc[sector.id] = sector.name;
+        return acc;
+      }, {}) || {};
+      setSectors(sectorsMap);
 
-      // Fetch custodies
-      const { data: custodiesData } = await supabase
+      const { data: custodiesData, error: custodiesError } = await supabase
         .from("custodies")
-        .select("*");
+        .select("id, name");
+      if (custodiesError) throw custodiesError;
       
-      if (custodiesData) {
-        const custodiesMap = custodiesData.reduce((acc, custody) => {
-          acc[custody.id] = custody.name;
-          return acc;
-        }, {});
-        setCustodies(custodiesMap);
-      }
+      const custodiesMap = custodiesData?.reduce((acc, custody) => {
+        acc[custody.id] = custody.name;
+        return acc;
+      }, {}) || {};
+      setCustodies(custodiesMap);
+
     } catch (error) {
       console.error("Error fetching sectors and custodies:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao carregar dados auxiliares",
+        description: "Não foi possível carregar setores e custódias."
+      });
+      // Retorna mapas vazios em caso de erro para evitar quebras
+      setSectors({}); 
+      setCustodies({});
     }
   };
 
   const fetchCryptoAssets = async () => {
+    if (!user) {
+      setCrypto([]);
+      return;
+    }
+    // setLoading(true); // Movido para loadData
     try {
-      setLoading(true);
-      
       const { data, error } = await supabase
         .from("crypto_assets")
-        .select("*")
-        .eq("user_id", user?.id);
+        .select("*, sectors(id, name), custodies(id, name)") // Usando JOINs
+        .eq("user_id", user.id);
       
       if (error) throw error;
       
       if (data) {
-        // Transform database format to Crypto type
         const transformedCrypto = data.map(item => ({
           id: item.id,
           ticker: item.ticker,
           name: item.name,
-          sector: "Outros", // Will be updated when sectors are loaded
+          sector: item.sectors ? item.sectors.name : "Outros", // Nome do setor via JOIN
           priceUSD: Number(item.price_usd),
           quantity: Number(item.quantity),
           totalUSD: Number(item.total_usd),
-          totalBRL: Number(item.total_usd) * USD_TO_BRL_RATE, // Use component-level constant
-          custody: "Carteira Local", // Will be updated when custodies are loaded
+          totalBRL: Number(item.total_usd) * USD_TO_BRL_RATE,
+          custody: item.custodies ? item.custodies.name : "Carteira Local", // Nome da custódia via JOIN
           portfolioPercentage: Number(item.portfolio_percentage),
           changePercentage: Number(item.change_percentage),
         }));
@@ -107,12 +129,11 @@ const CryptoPage = () => {
         title: "Erro ao carregar criptoativos",
         description: "Não foi possível carregar a lista de criptoativos."
       });
-      
-      // Fallback to empty array
-      setCrypto([]);
-    } finally {
-      setLoading(false);
-    }
+      setCrypto([]); // Fallback para array vazio em caso de erro
+    } 
+    // finally {
+    //   setLoading(false); // Movido para loadData
+    // }
   };
   
   const handleAddCrypto = async () => {
@@ -124,28 +145,34 @@ const CryptoPage = () => {
       });
       return;
     }
+    if (!user) return;
 
     const calculatedTotalUSD = (newCrypto.priceUSD || 0) * (newCrypto.quantity || 0);
     
+    // Encontrar IDs para setor e custódia se nomes foram fornecidos no formulário newCrypto
+    // Atualmente, newCrypto.sector e newCrypto.custody são strings vazias por padrão
+    const sectorId = Object.keys(sectors).find(id => sectors[id] === newCrypto.sector) || null;
+    const custodyId = Object.keys(custodies).find(id => custodies[id] === newCrypto.custody) || null;
+
     try {
       const { data, error } = await supabase
         .from("crypto_assets")
         .insert([
           {
-            user_id: user?.id,
+            user_id: user.id,
             ticker: newCrypto.ticker,
             name: newCrypto.name,
-            sector_id: null,
+            sector_id: sectorId, // Usar ID encontrado ou null
             price_usd: newCrypto.priceUSD || 0,
             quantity: newCrypto.quantity || 0,
             total_usd: calculatedTotalUSD,
-            total_brl: calculatedTotalUSD * USD_TO_BRL_RATE, // Use component-level constant
-            custody_id: null,
-            portfolio_percentage: 0,
+            total_brl: calculatedTotalUSD * USD_TO_BRL_RATE,
+            custody_id: custodyId, // Usar ID encontrado ou null
+            portfolio_percentage: 0, // Pode precisar de lógica de atualização separada
             change_percentage: 0,
           }
         ])
-        .select()
+        .select("*, sectors(id, name), custodies(id, name)") // Usar JOINs ao selecionar de volta
         .single();
       
       if (error) throw error;
@@ -155,12 +182,12 @@ const CryptoPage = () => {
           id: data.id,
           ticker: data.ticker,
           name: data.name,
-          sector: "Outros",
+          sector: data.sectors ? data.sectors.name : (newCrypto.sector || "Outros"),
           priceUSD: Number(data.price_usd),
           quantity: Number(data.quantity),
           totalUSD: Number(data.total_usd),
           totalBRL: Number(data.total_brl),
-          custody: "Carteira Local",
+          custody: data.custodies ? data.custodies.name : (newCrypto.custody || "Carteira Local"),
           portfolioPercentage: 0,
           changePercentage: 0,
         };
@@ -194,6 +221,12 @@ const CryptoPage = () => {
   };
   
   const handleUpdateCrypto = async (updatedCrypto: Crypto) => {
+    if (!user) return;
+
+    // Encontrar IDs de setor e custódia a partir dos nomes
+    const sectorId = Object.keys(sectors).find(id => sectors[id] === updatedCrypto.sector) || null;
+    const custodyId = Object.keys(custodies).find(id => custodies[id] === updatedCrypto.custody) || null;
+
     try {
       const { error } = await supabase
         .from("crypto_assets")
@@ -204,20 +237,23 @@ const CryptoPage = () => {
           quantity: updatedCrypto.quantity,
           total_usd: updatedCrypto.totalUSD,
           total_brl: updatedCrypto.totalBRL,
-          portfolio_percentage: updatedCrypto.portfolioPercentage,
-          change_percentage: updatedCrypto.changePercentage
+          sector_id: sectorId,     // Atualizar com o ID do setor
+          custody_id: custodyId,   // Atualizar com o ID da custódia
+          // portfolio_percentage e change_percentage podem precisar de lógica de atualização separada
         })
-        .eq("id", updatedCrypto.id);
-      
+        .eq("id", updatedCrypto.id)
+        .eq("user_id", user.id); // Garantir que o usuário só atualize seus próprios ativos
+
       if (error) throw error;
-      
-      setCrypto(prevCrypto => 
-        prevCrypto.map(asset => asset.id === updatedCrypto.id ? updatedCrypto : asset)
+
+      // Atualizar estado local para refletir a mudança imediatamente
+      setCrypto(prevCrypto =>
+        prevCrypto.map(c => (c.id === updatedCrypto.id ? updatedCrypto : c))
       );
-      
+
       toast({
         title: "Criptoativo atualizado",
-        description: `${updatedCrypto.name} (${updatedCrypto.ticker}) foi atualizado com sucesso`
+        description: `${updatedCrypto.name} foi atualizado com sucesso.`,
       });
     } catch (error) {
       console.error("Error updating crypto asset:", error);
@@ -228,15 +264,17 @@ const CryptoPage = () => {
       });
     }
   };
-  
+
   const handleDeleteCrypto = async (id: string) => {
+    if (!user) return;
     try {
       const cryptoToDelete = crypto.find((asset) => asset.id === id);
       
       const { error } = await supabase
         .from("crypto_assets")
         .delete()
-        .eq("id", id);
+        .eq("id", id)
+        .eq("user_id", user.id); // Garante que o usuário só delete seus próprios ativos
       
       if (error) throw error;
       
@@ -255,6 +293,120 @@ const CryptoPage = () => {
         title: "Erro ao remover criptoativo",
         description: "Não foi possível remover o criptoativo. Tente novamente."
       });
+    }
+  };
+
+  // Funções para adicionar/remover setores da lista de opções
+  const handleAddSector = async (sectorName: string) => {
+    if (!user || !sectorName.trim()) return;
+    const trimmedName = sectorName.trim();
+    const existingSector = Object.values(sectors).find(s => s.toLowerCase() === trimmedName.toLowerCase());
+    if (existingSector) {
+      toast({ title: "Setor já existe", description: `O setor "${trimmedName}" já está na lista.`, variant: "default" });
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('sectors') // Assume que a tabela 'sectors' tem 'user_id'
+        .insert({ name: trimmedName, user_id: user.id })
+        .select()
+        .single();
+      if (error) throw error;
+      if (data) {
+        toast({ title: "Setor adicionado", description: `Setor "${data.name}" adicionado.` });
+        await fetchSectorsAndCustodies(); // Recarrega setores e custódias
+      }
+    } catch (error) {
+      console.error("Error adding sector:", error);
+      toast({ title: "Erro ao adicionar setor", variant: "destructive", description: (error as Error).message });
+    }
+  };
+
+  const handleRemoveSector = async (sectorName: string) => {
+    if (!user) return;
+    const sectorIdToRemove = Object.keys(sectors).find(id => sectors[id] === sectorName);
+    if (!sectorIdToRemove) {
+      toast({ title: "Erro", description: "Setor não encontrado para remoção.", variant: "destructive" });
+      return;
+    }
+    const isSectorUsed = crypto.some(c => c.sector === sectorName);
+    if (isSectorUsed) {
+      toast({
+        title: "Não é possível remover: Setor em uso",
+        description: `O setor "${sectorName}" está em uso por um ou mais criptoativos e não pode ser removido.`,
+        variant: "default",
+      });
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('sectors')
+        .delete()
+        .eq('id', sectorIdToRemove)
+        .eq('user_id', user.id);
+      if (error) throw error;
+      toast({ title: "Setor removido", description: `Setor "${sectorName}" removido.` });
+      await fetchSectorsAndCustodies();
+    } catch (error) {
+      console.error("Error removing sector:", error);
+      toast({ title: "Erro ao remover setor", variant: "destructive", description: (error as Error).message });
+    }
+  };
+
+  // Funções para adicionar/remover custódias da lista de opções
+  const handleAddCustody = async (custodyName: string) => {
+    if (!user || !custodyName.trim()) return;
+    const trimmedName = custodyName.trim();
+    const existingCustody = Object.values(custodies).find(c => c.toLowerCase() === trimmedName.toLowerCase());
+    if (existingCustody) {
+      toast({ title: "Custódia já existe", description: `A custódia "${trimmedName}" já está na lista.`, variant: "default" });
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('custodies') // Assume que a tabela 'custodies' tem 'user_id'
+        .insert({ name: trimmedName, user_id: user.id })
+        .select()
+        .single();
+      if (error) throw error;
+      if (data) {
+        toast({ title: "Custódia adicionada", description: `Custódia "${data.name}" adicionada.` });
+        await fetchSectorsAndCustodies();
+      }
+    } catch (error) {
+      console.error("Error adding custody:", error);
+      toast({ title: "Erro ao adicionar custódia", variant: "destructive", description: (error as Error).message });
+    }
+  };
+
+  const handleRemoveCustody = async (custodyName: string) => {
+    if (!user) return;
+    const custodyIdToRemove = Object.keys(custodies).find(id => custodies[id] === custodyName);
+    if (!custodyIdToRemove) {
+      toast({ title: "Erro", description: "Custódia não encontrada para remoção.", variant: "destructive" });
+      return;
+    }
+    const isCustodyUsed = crypto.some(c => c.custody === custodyName);
+    if (isCustodyUsed) {
+      toast({
+        title: "Não é possível remover: Custódia em uso",
+        description: `A custódia "${custodyName}" está em uso por um ou mais criptoativos e não pode ser removida.`,
+        variant: "default",
+      });
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('custodies')
+        .delete()
+        .eq('id', custodyIdToRemove)
+        .eq('user_id', user.id);
+      if (error) throw error;
+      toast({ title: "Custódia removida", description: `Custódia "${custodyName}" removida.` });
+      await fetchSectorsAndCustodies();
+    } catch (error) {
+      console.error("Error removing custody:", error);
+      toast({ title: "Erro ao remover custódia", variant: "destructive", description: (error as Error).message });
     }
   };
 
@@ -432,9 +584,15 @@ const CryptoPage = () => {
       </div>
       
       <CryptoTable 
-        crypto={crypto} 
-        onUpdate={handleUpdateCrypto}
-        onDelete={handleDeleteCrypto}
+        data={crypto} 
+        onUpdateRow={handleUpdateCrypto} 
+        onDeleteRow={handleDeleteCrypto} 
+        sectors={Object.values(sectors)} 
+        custodies={Object.values(custodies)} 
+        onAddSector={handleAddSector} 
+        onRemoveSector={handleRemoveSector} 
+        onAddCustody={handleAddCustody} 
+        onRemoveCustody={handleRemoveCustody} 
       />
     </div>
   );
