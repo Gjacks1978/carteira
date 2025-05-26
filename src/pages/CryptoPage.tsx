@@ -11,6 +11,7 @@ import { calculateCryptoMetrics } from "@/lib/assetUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
+import { AllocationBySectorCard } from "@/components/crypto/AllocationBySectorCard";
 
 const USD_TO_BRL_RATE = 5.05; // Define at component level for broader access
 
@@ -332,20 +333,8 @@ const CryptoPage = () => {
           </CardContent>
         </Card>
         
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Principais Custódias</CardTitle>
-            <Wallet className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold truncate">
-              {metrics.topCustody || "N/A"}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {metrics.cryptoCount} criptoativos
-            </p>
-          </CardContent>
-        </Card>
+        <AllocationBySectorCard sectorAllocation={metrics.sectorAllocation} />
+
       </div>
       
       <div className="flex justify-between items-center">

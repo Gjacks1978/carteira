@@ -34,6 +34,12 @@ export interface AssetTabMetrics {
   largestPositionPercentage: number;
 }
 
+export interface SectorAllocationItem {
+  sectorName: string;
+  totalUSD: number;
+  percentage: number; // of total crypto portfolio
+}
+
 export interface CryptoMetrics {
   totalUSD: number;
   totalBRL: number;
@@ -41,6 +47,7 @@ export interface CryptoMetrics {
   portfolioPercentage: number;
   topCustody: string | null;
   stablecoinsTotal?: number;
+  sectorAllocation?: SectorAllocationItem[];
 }
 
 export interface PortfolioAllocation {

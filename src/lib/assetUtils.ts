@@ -1,4 +1,3 @@
-
 import { Asset, AssetTabMetrics, Crypto, CryptoMetrics } from "@/types/assets";
 import { investmentData } from "@/data/mockData";
 
@@ -81,6 +80,24 @@ export const calculateCryptoMetrics = (cryptos: Crypto[]): CryptoMetrics => {
     .filter(crypto => crypto.sector.toLowerCase() === "stablecoins")
     .reduce((acc, crypto) => acc + crypto.totalUSD, 0);
   
+  // Calculate allocation by sector
+  const allocationBySector: Record<string, { totalUSD: number }> = {};
+  cryptos.forEach((crypto) => {
+    const sector = crypto.sector || "Não categorizado";
+    if (!allocationBySector[sector]) {
+      allocationBySector[sector] = { totalUSD: 0 };
+    }
+    allocationBySector[sector].totalUSD += crypto.totalUSD;
+  });
+
+  const sectorAllocationArray = Object.entries(allocationBySector)
+    .map(([sectorName, data]) => ({
+      sectorName,
+      totalUSD: data.totalUSD,
+      percentage: totalUSD > 0 ? (data.totalUSD / totalUSD) * 100 : 0,
+    }))
+    .sort((a, b) => b.totalUSD - a.totalUSD); // Sort by highest value
+
   return {
     totalUSD,
     totalBRL,
@@ -88,5 +105,6 @@ export const calculateCryptoMetrics = (cryptos: Crypto[]): CryptoMetrics => {
     portfolioPercentage,
     topCustody,
     stablecoinsTotal, // Adicionado para referência
+    sectorAllocation: sectorAllocationArray, // Added sector allocation data
   };
 };
