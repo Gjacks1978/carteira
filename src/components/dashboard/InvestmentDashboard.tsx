@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -85,10 +84,11 @@ const InvestmentDashboard = () => {
       const assetsReturn = assetsData?.reduce((sum, asset) => sum + Number(asset.return_value || 0), 0) || 0;
       
       // Calculate crypto totals
-      const cryptoTotalBRL = cryptoData?.reduce((sum, crypto) => sum + Number(crypto.total_brl), 0) || 0;
+      const cryptoTotalBRL = cryptoData?.reduce((sum, crypto) => sum + Number(crypto.total_brl || 0), 0) || 0;
+      
       // For crypto return, we'll calculate based on change_percentage and total_brl
       const cryptoReturn = cryptoData?.reduce((sum, crypto) => {
-        const totalBrl = Number(crypto.total_brl);
+        const totalBrl = Number(crypto.total_brl || 0); // Keep using stored total_brl for return calc for now
         const changePerc = Number(crypto.change_percentage || 0);
         return sum + (totalBrl * changePerc / 100);
       }, 0) || 0;

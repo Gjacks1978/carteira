@@ -12,6 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 
+const USD_TO_BRL_RATE = 5.05; // Define at component level for broader access
+
 const CryptoPage = () => {
   const [crypto, setCrypto] = useState<Crypto[]>([]);
   const [openAddAssetDialog, setOpenAddAssetDialog] = useState(false);
@@ -89,7 +91,7 @@ const CryptoPage = () => {
           priceUSD: Number(item.price_usd),
           quantity: Number(item.quantity),
           totalUSD: Number(item.total_usd),
-          totalBRL: Number(item.total_brl),
+          totalBRL: Number(item.total_usd) * USD_TO_BRL_RATE, // Use component-level constant
           custody: "Carteira Local", // Will be updated when custodies are loaded
           portfolioPercentage: Number(item.portfolio_percentage),
           changePercentage: Number(item.change_percentage),
@@ -112,8 +114,6 @@ const CryptoPage = () => {
     }
   };
   
-  const usdToBRL = 5.05; // Mock exchange rate - Ideally should come from an API
-
   const handleAddCrypto = async () => {
     if (!newCrypto.ticker || !newCrypto.name) {
       toast({
@@ -138,7 +138,7 @@ const CryptoPage = () => {
             price_usd: newCrypto.priceUSD || 0,
             quantity: newCrypto.quantity || 0,
             total_usd: calculatedTotalUSD,
-            total_brl: calculatedTotalUSD * usdToBRL,
+            total_brl: calculatedTotalUSD * USD_TO_BRL_RATE, // Use component-level constant
             custody_id: null,
             portfolio_percentage: 0,
             change_percentage: 0,
@@ -296,9 +296,14 @@ const CryptoPage = () => {
                 maximumFractionDigits: 2,
               })}
             </div>
-            <p className="text-xs text-muted-foreground flex items-center">
-              <DollarSign className="h-3 w-3 mr-1" />
+            <p className="text-xs text-muted-foreground">
               Valor em dólares
+            </p>
+            <p className="text-xs text-muted-foreground pt-1">
+              {metrics.totalBRL.toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              })}
             </p>
           </CardContent>
         </Card>
@@ -316,7 +321,13 @@ const CryptoPage = () => {
               })}
             </div>
             <p className="text-xs text-muted-foreground">
-              Total em Stablecoins
+              Total em Stablecoins (USD)
+            </p>
+            <p className="text-xs text-muted-foreground pt-1">
+              {(stablecoinTotal * USD_TO_BRL_RATE).toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              })}
             </p>
           </CardContent>
         </Card>
@@ -394,7 +405,7 @@ const CryptoPage = () => {
                       ...newCrypto, 
                       priceUSD,
                       totalUSD,
-                      totalBRL: totalUSD * usdToBRL
+                      totalBRL: totalUSD * USD_TO_BRL_RATE // Use component-level constant
                     });
                   },
                 },
@@ -412,7 +423,7 @@ const CryptoPage = () => {
                       ...newCrypto, 
                       quantity,
                       totalUSD,
-                      totalBRL: totalUSD * usdToBRL
+                      totalBRL: totalUSD * USD_TO_BRL_RATE // Use component-level constant
                     });
                   },
                 },
