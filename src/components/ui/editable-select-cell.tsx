@@ -1,24 +1,15 @@
-
-import React, { useState, useRef, useEffect } from "react";
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from "@/components/ui/command";
-import { cn } from "@/lib/utils";
-import { Trash2 } from "lucide-react";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Plus, Trash2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface EditableSelectCellProps {
   value: string;
@@ -38,142 +29,104 @@ const EditableSelectCell: React.FC<EditableSelectCellProps> = ({
   onAddOption,
   onRemoveOption,
   className,
-  placeholder = "Selecionar...",
-  createPlaceholder = "Adicionar novo...",
+  placeholder = 'Selecionar...',
+  createPlaceholder = 'Nova opção...',
 }) => {
-  const [open, setOpen] = useState(false);
-  const [newOption, setNewOption] = useState("");
-  const [addingOption, setAddingOption] = useState(false);
+  const [newOption, setNewOption] = useState('');
+  const [isAdding, setIsAdding] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (addingOption && inputRef.current) {
+    if (isAdding && inputRef.current) {
       inputRef.current.focus();
     }
-  }, [addingOption]);
+  }, [isAdding]);
 
-  const handleAddOption = () => {
+  const handleAddNewOption = () => {
     if (newOption.trim() && onAddOption) {
       onAddOption(newOption.trim());
-      setNewOption("");
-      setAddingOption(false);
+      setNewOption('');
+      setIsAdding(false);
     }
   };
 
-  const handleOptionSelect = (selectedValue: string) => {
-    if (value !== selectedValue) {
-      onUpdate(selectedValue);
-    }
-    setOpen(false);
-  };
-
-  const handleRemoveOption = (e: React.MouseEvent, optionValue: string) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleRemove = (
+    e: React.MouseEvent<HTMLButtonElement>,
+    optionToRemove: string
+  ) => {
+    e.stopPropagation(); // Impede que o select feche ou selecione o item
     if (onRemoveOption) {
-      onRemoveOption(optionValue);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleAddOption();
-    }
-    if (e.key === "Escape") {
-      e.preventDefault();
-      setAddingOption(false);
-      setNewOption("");
+      onRemoveOption(optionToRemove);
     }
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          role="combobox"
-          aria-expanded={open}
-          className={cn(
-            "justify-between hover:bg-muted/50 h-8 px-2 py-1 w-full",
-            className
-          )}
-        >
-          <span className="truncate">{value || placeholder}</span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0 bg-popover border shadow-lg z-50" align="start">
-        <Command>
-          <CommandInput placeholder={placeholder} />
-          <CommandList>
-            <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option}
-                  value={option}
-                  onSelect={() => handleOptionSelect(option)}
-                  className="flex justify-between items-center cursor-pointer"
-                >
-                  <div className="flex items-center space-x-2 flex-1">
-                    <span className="truncate">{option}</span>
-                    {value === option && <Check className="h-4 w-4 ml-2" />}
-                  </div>
-                  {onRemoveOption && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 hover:bg-destructive/10 hover:text-destructive ml-auto"
-                      onClick={(e) => handleRemoveOption(e, option)}
-                      onMouseDown={(e) => e.preventDefault()}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  )}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-            {onAddOption && (
-              <>
-                <CommandSeparator />
-                <div className="p-2">
-                  {addingOption ? (
-                    <div className="flex space-x-2">
-                      <Input
-                        ref={inputRef}
-                        value={newOption}
-                        onChange={(e) => setNewOption(e.target.value)}
-                        placeholder={createPlaceholder}
-                        className="h-8"
-                        onKeyDown={handleKeyDown}
-                      />
-                      <Button
-                        size="sm"
-                        className="h-8"
-                        onClick={handleAddOption}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                      onClick={() => setAddingOption(true)}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Adicionar opção
-                    </Button>
-                  )}
-                </div>
-              </>
+    <Select value={value} onValueChange={onUpdate}>
+      <SelectTrigger className={cn('h-8 px-2 py-1 w-full', className)}>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option) => (
+          <div key={option} className="flex items-center justify-between pr-2 hover:bg-accent">
+            <SelectItem value={option} className="flex-grow cursor-pointer">
+              {option}
+            </SelectItem>
+            {onRemoveOption && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 shrink-0 ml-1 hover:bg-destructive/10 hover:text-destructive"
+                onClick={(e) => handleRemove(e, option)}
+                // Adicionar onMouseDown para tentar evitar fechamento, se necessário
+                onMouseDown={(e) => e.preventDefault()} 
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
             )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+          </div>
+        ))}
+        {onAddOption && (
+          <div className="p-2 mt-1 border-t">
+            {isAdding ? (
+              <div className="flex items-center space-x-2">
+                <Input
+                  ref={inputRef}
+                  type="text"
+                  value={newOption}
+                  onChange={(e) => setNewOption(e.target.value)}
+                  placeholder={createPlaceholder}
+                  className="h-8 flex-grow"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddNewOption();
+                    }
+                    if (e.key === 'Escape') {
+                      e.preventDefault();
+                      setIsAdding(false);
+                      setNewOption('');
+                    }
+                  }}
+                />
+                <Button size="sm" onClick={handleAddNewOption} className="h-8">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full h-8"
+                onClick={() => setIsAdding(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Adicionar opção
+              </Button>
+            )}
+          </div>
+        )}
+      </SelectContent>
+    </Select>
   );
 };
 
