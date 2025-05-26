@@ -1,23 +1,18 @@
+
 import { useState, useEffect } from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Edit2, Trash2 } from "lucide-react";
+import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Asset } from "@/types/assets";
-import { cn } from "@/lib/utils";
-import { EditableCell } from "@/components/ui/editable-cell";
-import { EditableSelectCell } from "@/components/ui/editable-select-cell";
+import AssetTableRow from "./AssetTableRow";
+import EditAssetDialog from "./EditAssetDialog";
+import DeleteAssetDialog from "./DeleteAssetDialog";
+
 interface AssetsTableProps {
   assets: Asset[];
   onUpdate: (asset: Asset) => void;
   onDelete: (id: string) => void;
 }
-const AssetsTable = ({
-  assets,
-  onUpdate,
-  onDelete
-}: AssetsTableProps) => {
+
+const AssetsTable = ({ assets, onUpdate, onDelete }: AssetsTableProps) => {
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -29,12 +24,12 @@ const AssetsTable = ({
     const uniqueTypes = Array.from(new Set(assets.map(asset => asset.type))).filter(Boolean);
     setAssetTypes(uniqueTypes);
   }, [assets]);
+
   const handleEdit = (asset: Asset) => {
-    setEditingAsset({
-      ...asset
-    });
+    setEditingAsset({ ...asset });
     setIsEditDialogOpen(true);
   };
+
   const handleConfirmEdit = () => {
     if (editingAsset) {
       // Recalculate total
@@ -47,10 +42,12 @@ const AssetsTable = ({
       setEditingAsset(null);
     }
   };
+
   const handleDeleteClick = (id: string) => {
     setAssetToDelete(id);
     setIsDeleteDialogOpen(true);
   };
+
   const handleConfirmDelete = () => {
     if (assetToDelete) {
       onDelete(assetToDelete);
@@ -58,9 +55,11 @@ const AssetsTable = ({
       setAssetToDelete(null);
     }
   };
+
   const updateAssetField = (id: string, field: keyof Asset, value: any) => {
     const assetToUpdate = assets.find(item => item.id === id);
     if (!assetToUpdate) return;
+
     const updatedAsset = {
       ...assetToUpdate,
       [field]: value
@@ -72,11 +71,13 @@ const AssetsTable = ({
     }
     onUpdate(updatedAsset);
   };
+
   const addAssetType = (newType: string) => {
     if (!assetTypes.includes(newType)) {
       setAssetTypes([...assetTypes, newType]);
     }
   };
+
   const removeAssetType = (typeToRemove: string) => {
     // Only remove if not in use
     const isInUse = assets.some(item => item.type === typeToRemove);
@@ -84,14 +85,19 @@ const AssetsTable = ({
       setAssetTypes(assetTypes.filter(t => t !== typeToRemove));
     }
   };
+
   if (assets.length === 0) {
-    return <div className="py-12 text-center">
+    return (
+      <div className="py-12 text-center">
         <p className="text-muted-foreground">
           Nenhum ativo cadastrado. Clique em "Adicionar Ativo" para começar.
         </p>
-      </div>;
+      </div>
+    );
   }
-  return <>
+
+  return (
+    <>
       <div className="rounded-md border bg-white">
         <Table>
           <TableHeader>
@@ -107,136 +113,37 @@ const AssetsTable = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {assets.map(asset => <TableRow key={asset.id}>
-                <TableCell className="font-medium">
-                  <EditableCell value={asset.name} onUpdate={value => updateAssetField(asset.id, 'name', value)} />
-                </TableCell>
-                <TableCell>
-                  <EditableCell value={asset.ticker} onUpdate={value => updateAssetField(asset.id, 'ticker', value)} />
-                </TableCell>
-                <TableCell>
-                  <EditableSelectCell value={asset.type} options={assetTypes} onUpdate={value => updateAssetField(asset.id, 'type', value)} onAddOption={addAssetType} onRemoveOption={removeAssetType} />
-                </TableCell>
-                <TableCell className="text-right">
-                  <EditableCell value={asset.price} onUpdate={value => updateAssetField(asset.id, 'price', Number(value))} type="number" formatter={val => Number(val).toLocaleString("pt-BR", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-              })} className="text-right" />
-                </TableCell>
-                <TableCell className="text-right">
-                  <EditableCell value={asset.quantity} onUpdate={value => updateAssetField(asset.id, 'quantity', Number(value))} type="number" className="text-right" />
-                </TableCell>
-                <TableCell className="text-right font-medium">
-                  {asset.total.toLocaleString("pt-BR", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-              })}
-                </TableCell>
-                <TableCell className={cn("text-right font-medium", asset.returnPercentage > 0 && "text-success", asset.returnPercentage < 0 && "text-danger")}>
-                  {asset.returnPercentage > 0 && "+"}
-                  {asset.returnPercentage.toFixed(2)}%
-                </TableCell>
-                <TableCell className="text-center">
-                  <div className="flex justify-center space-x-2">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(asset)}>
-                      <Edit2 className="h-4 w-4" />
-                      <span className="sr-only">Editar</span>
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDeleteClick(asset.id)}>
-                      <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">Excluir</span>
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>)}
+            {assets.map(asset => (
+              <AssetTableRow
+                key={asset.id}
+                asset={asset}
+                assetTypes={assetTypes}
+                onUpdateField={updateAssetField}
+                onAddAssetType={addAssetType}
+                onRemoveAssetType={removeAssetType}
+                onEdit={handleEdit}
+                onDelete={handleDeleteClick}
+              />
+            ))}
           </TableBody>
         </Table>
       </div>
 
-      {/* Edit dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Editar Ativo</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="name" className="text-right">
-                Nome
-              </label>
-              <Input id="name" value={editingAsset?.name || ""} onChange={e => setEditingAsset(prev => prev ? {
-              ...prev,
-              name: e.target.value
-            } : null)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="ticker" className="text-right">
-                Ticker
-              </label>
-              <Input id="ticker" value={editingAsset?.ticker || ""} onChange={e => setEditingAsset(prev => prev ? {
-              ...prev,
-              ticker: e.target.value
-            } : null)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="type" className="text-right">
-                Tipo
-              </label>
-              <Input id="type" value={editingAsset?.type || ""} onChange={e => setEditingAsset(prev => prev ? {
-              ...prev,
-              type: e.target.value
-            } : null)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="price" className="text-right">
-                Preço (R$)
-              </label>
-              <Input id="price" type="number" value={editingAsset?.price || 0} onChange={e => setEditingAsset(prev => prev ? {
-              ...prev,
-              price: parseFloat(e.target.value) || 0
-            } : null)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="quantity" className="text-right">
-                Quantidade
-              </label>
-              <Input id="quantity" type="number" value={editingAsset?.quantity || 0} onChange={e => setEditingAsset(prev => prev ? {
-              ...prev,
-              quantity: parseFloat(e.target.value) || 0
-            } : null)} className="col-span-3" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleConfirmEdit}>Salvar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EditAssetDialog
+        isOpen={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        editingAsset={editingAsset}
+        onAssetChange={setEditingAsset}
+        onConfirm={handleConfirmEdit}
+      />
 
-      {/* Delete confirmation dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Confirmar exclusão</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p>Tem certeza que deseja excluir este ativo?</p>
-            <p className="text-sm text-muted-foreground mt-2">
-              Esta ação não pode ser desfeita.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button variant="destructive" onClick={handleConfirmDelete}>
-              Excluir
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>;
+      <DeleteAssetDialog
+        isOpen={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        onConfirm={handleConfirmDelete}
+      />
+    </>
+  );
 };
+
 export default AssetsTable;
