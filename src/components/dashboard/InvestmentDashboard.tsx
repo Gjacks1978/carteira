@@ -57,63 +57,77 @@ const InvestmentDashboard = () => {
     try {
       setLoading(true);
 
-      // Fetch assets data
+      // Fetch assets data with categories
       const { data: assetsData, error: assetsError } = await supabase
         .from("assets")
-        .select("*")
+        .select(`
+          *,
+          asset_categories!inner(name)
+        `)
         .eq("user_id", user.id);
 
       if (assetsError) throw assetsError;
 
-      // Fetch crypto assets data
+      // Fetch crypto assets data with sectors and custodies
       const { data: cryptoData, error: cryptoError } = await supabase
         .from("crypto_assets")
-        .select("*")
+        .select(`
+          *,
+          sectors(name),
+          custodies(name)
+        `)
         .eq("user_id", user.id);
 
       if (cryptoError) throw cryptoError;
 
-      // Calculate totals
+      // Calculate assets totals
       const assetsTotal = assetsData?.reduce((sum, asset) => sum + Number(asset.total), 0) || 0;
+      const assetsReturn = assetsData?.reduce((sum, asset) => sum + Number(asset.return_value || 0), 0) || 0;
+      
+      // Calculate crypto totals
       const cryptoTotalBRL = cryptoData?.reduce((sum, crypto) => sum + Number(crypto.total_brl), 0) || 0;
+      // For crypto return, we'll calculate based on change_percentage and total_brl
+      const cryptoReturn = cryptoData?.reduce((sum, crypto) => {
+        const totalBrl = Number(crypto.total_brl);
+        const changePerc = Number(crypto.change_percentage || 0);
+        return sum + (totalBrl * changePerc / 100);
+      }, 0) || 0;
       
       const totalInvested = assetsTotal + cryptoTotalBRL;
-      
-      // Calculate return (using return_value from assets)
-      const assetsReturn = assetsData?.reduce((sum, asset) => sum + Number(asset.return_value || 0), 0) || 0;
-      const totalReturn = assetsReturn; // Crypto return calculation would need historical data
-      
+      const totalReturn = assetsReturn + cryptoReturn;
       const returnPercentage = totalInvested > 0 ? (totalReturn / totalInvested) * 100 : 0;
 
-      // Calculate portfolio allocation
+      // Calculate portfolio allocation by category/sector
       const portfolioAllocation = [];
       
-      if (assetsTotal > 0) {
-        portfolioAllocation.push({
-          name: "Ativos Tradicionais",
-          value: assetsTotal
-        });
-      }
-      
-      if (cryptoTotalBRL > 0) {
-        portfolioAllocation.push({
-          name: "Criptomoedas",
-          value: cryptoTotalBRL
-        });
-      }
-
-      // Group assets by type
-      const assetsByType = assetsData?.reduce((acc, asset) => {
-        const type = asset.type || "Outros";
-        acc[type] = (acc[type] || 0) + Number(asset.total);
+      // Group assets by category
+      const assetsByCategory = assetsData?.reduce((acc, asset) => {
+        const categoryName = asset.asset_categories?.name || "Outros";
+        acc[categoryName] = (acc[categoryName] || 0) + Number(asset.total);
         return acc;
       }, {} as Record<string, number>) || {};
 
-      // Add asset types to allocation
-      Object.entries(assetsByType).forEach(([type, value]) => {
+      // Group crypto by sector
+      const cryptoBySector = cryptoData?.reduce((acc, crypto) => {
+        const sectorName = crypto.sectors?.name || "Criptomoedas";
+        acc[sectorName] = (acc[sectorName] || 0) + Number(crypto.total_brl);
+        return acc;
+      }, {} as Record<string, number>) || {};
+
+      // Combine allocations
+      Object.entries(assetsByCategory).forEach(([category, value]) => {
         if (value > 0) {
           portfolioAllocation.push({
-            name: type,
+            name: category,
+            value: value
+          });
+        }
+      });
+
+      Object.entries(cryptoBySector).forEach(([sector, value]) => {
+        if (value > 0) {
+          portfolioAllocation.push({
+            name: sector,
             value: value
           });
         }
