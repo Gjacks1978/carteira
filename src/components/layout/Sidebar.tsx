@@ -3,6 +3,7 @@ import { Home, PieChart, Bitcoin, DollarSign, AlertCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { fetchUSDtoBRLRate, ExchangeRateData, FALLBACK_USD_TO_BRL_RATE } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ThemeToggle } from "./ThemeToggle";
 
 const Sidebar = () => {
   const [exchangeRateInfo, setExchangeRateInfo] = useState<ExchangeRateData>({
@@ -87,6 +88,14 @@ const Sidebar = () => {
               Atualizado em: {exchangeRateInfo.timestamp}
             </div>
           )}
+        </div>
+
+        {/* User Info / Theme Toggle Footer Bar */}
+        <div className="mt-auto flex items-center justify-between p-3 border-t border-border">
+          <div className="text-sm text-muted-foreground">
+            {/* Futuro local para nome/avatar do usuário */}
+          </div>
+          <ThemeToggle />
         </div>
       </div>
     </TooltipProvider>
