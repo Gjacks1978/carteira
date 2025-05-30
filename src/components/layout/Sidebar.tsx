@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Home, PieChart, Bitcoin, DollarSign, AlertCircle } from "lucide-react";
+import { Home, PieChart, Bitcoin, DollarSign, AlertCircle, BarChart3 } from "lucide-react"; // Adicionado BarChart3
 import { useEffect, useState } from "react";
 import { fetchUSDtoBRLRate, ExchangeRateData, FALLBACK_USD_TO_BRL_RATE } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -57,6 +57,17 @@ const Sidebar = () => {
         >
           <Bitcoin className="h-4 w-4 mr-2" />
           <span>Cripto</span>
+        </NavLink>
+        <NavLink
+          to="/relatorios"
+          className={({ isActive }) =>
+            `flex items-center py-2 px-3 rounded-md transition-colors ${
+              isActive ? "bg-accent text-accent-foreground" : "hover:bg-muted"
+            }`
+          }
+        >
+          <BarChart3 className="h-4 w-4 mr-2" />
+          <span>Relatórios</span>
         </NavLink>
 
         <div className="pt-4 mt-4 border-t border-muted">

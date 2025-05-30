@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import AssetsPage from "./pages/AssetsPage";
 import CryptoPage from "./pages/CryptoPage";
+import ReportsPage from "./pages/ReportsPage"; // Adicionando a importação da ReportsPage
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -32,6 +33,7 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/ativos" element={<AssetsPage />} />
                 <Route path="/cripto" element={<CryptoPage />} />
+                <Route path="/relatorios" element={<ReportsPage />} /> {/* Adicionando a rota para ReportsPage */}
               </Route>
             </Route>
             
