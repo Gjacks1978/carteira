@@ -61,7 +61,7 @@ const AssetsPage = () => {
           type: item.type,
           price: Number(item.price),
           quantity: Number(item.quantity),
-          total: Number(item.total),
+          total: Number(item.total || 0),
           return: Number(item.return_value),
           returnPercentage: Number(item.return_percentage),
           categoryId: item.category_id,
