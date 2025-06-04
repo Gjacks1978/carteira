@@ -3,17 +3,19 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import RegisterSnapshotModal from '@/components/reports/RegisterSnapshotModal';
+import SnapshotHistoryTable from '@/components/reports/SnapshotHistoryTable'; // <-- IMPORTAR
 
 const ReportsPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0); // <-- ADICIONAR ESTADO DE REFRESH
 
   const handleRegisterSnapshot = () => {
     setIsModalOpen(true);
   };
 
   const handleSnapshotSuccess = () => {
-    // TODO: Adicionar lógica para recarregar os dados da tabela de histórico de snapshots
     console.log('Snapshot salvo, atualizar tabela de relatórios.');
+    setRefreshKey(prevKey => prevKey + 1); // <-- INCREMENTAR REFRESH KEY
     setIsModalOpen(false); // Close modal on success
   };
 
@@ -47,8 +49,7 @@ const ReportsPage: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* TODO: Adicionar tabela/componente para exibir os snapshots */}
-            <p className="text-muted-foreground">Nenhum snapshot registrado ainda.</p>
+            <SnapshotHistoryTable refreshKey={refreshKey} /> {/* <-- USAR O COMPONENTE E PASSAR REFRESH KEY */}
           </CardContent>
         </Card>
 
