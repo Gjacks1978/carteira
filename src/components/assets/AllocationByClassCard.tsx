@@ -27,11 +27,11 @@ export const AllocationByClassCard: React.FC<AllocationByClassCardProps> = ({ as
     );
   }
 
-  const totalPortfolioValueBRL = assets.reduce((sum, asset) => sum + asset.total, 0);
+  const totalPortfolioValueBRL = assets.reduce((sum, asset) => sum + (asset.current_total_value_brl ?? 0), 0);
   
   const allocationByClass: { [key: string]: number } = assets.reduce((acc, asset) => {
     const assetClass = asset.type || "Não Classificado"; // Usa 'type' como classe
-    acc[assetClass] = (acc[assetClass] || 0) + asset.total;
+    acc[assetClass] = (acc[assetClass] || 0) + (asset.current_total_value_brl ?? 0);
     return acc;
   }, {} as { [key: string]: number });
 
