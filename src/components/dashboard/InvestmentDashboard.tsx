@@ -84,7 +84,7 @@ const InvestmentDashboard = () => {
       if (cryptoError) throw cryptoError;
 
       // Calculate assets totals
-      const assetsTotal = assetsData?.reduce((sum, asset) => sum + Number(asset.total), 0) || 0;
+      const assetsTotal = (assetsData as any)?.reduce((sum: number, asset: any) => sum + Number(asset.current_total_value_brl ?? 0), 0) || 0;
       const assetsReturn = assetsData?.reduce((sum, asset) => sum + Number(asset.return_value || 0), 0) || 0;
       
       // Calculate crypto totals USANDO A COTAÇÃO ATUAL
@@ -108,9 +108,9 @@ const InvestmentDashboard = () => {
       // Calculate portfolio allocation by category/sector
       const portfolioAllocation = [];
       
-      const assetsByCategory = assetsData?.reduce((acc, asset) => {
+      const assetsByCategory = (assetsData as any)?.reduce((acc: Record<string, number>, asset: any) => {
         const categoryName = asset.asset_categories?.name || "Outros";
-        acc[categoryName] = (acc[categoryName] || 0) + Number(asset.total);
+        acc[categoryName] = (acc[categoryName] || 0) + Number(asset.current_total_value_brl ?? 0);
         return acc;
       }, {} as Record<string, number>) || {};
 
@@ -123,7 +123,7 @@ const InvestmentDashboard = () => {
       }, {} as Record<string, number>) || {};
 
       Object.entries(assetsByCategory).forEach(([category, value]) => {
-        if (value > 0) {
+        if (Number(value) > 0) {
           portfolioAllocation.push({
             name: category,
             value: value
