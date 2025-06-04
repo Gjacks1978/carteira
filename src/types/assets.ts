@@ -5,7 +5,7 @@ export interface Asset {
   type: string;
   price: number;
   quantity: number;
-  total: number;
+  current_total_value_brl: number;
   return: number;
   returnPercentage: number;
   categoryId?: string;

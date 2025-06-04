@@ -72,7 +72,7 @@ const AssetTableRow = ({
         />
       </TableCell>
       <TableCell className="text-right font-medium">
-        {asset.total.toLocaleString("pt-BR", {
+        {(asset.current_total_value_brl ?? 0).toLocaleString("pt-BR", {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         })}

@@ -10,7 +10,7 @@ interface AssetCategorySectionProps {
   categoryName: string;
   categoryId: string;
   assets: Asset[];
-  onAddAsset: (asset: Partial<Asset>) => void;
+  onAddAsset: (asset: Partial<Asset> & { total?: number }) => void;
   onUpdateAsset: (asset: Asset) => void;
   onDeleteAsset: (id: string) => void;
 }
@@ -23,7 +23,7 @@ const AssetCategorySection = ({
   onDeleteAsset
 }: AssetCategorySectionProps) => {
   const [openAddAssetDialog, setOpenAddAssetDialog] = useState(false);
-  const [newAsset, setNewAsset] = useState<Partial<Asset>>({
+  const [newAsset, setNewAsset] = useState<Partial<Asset> & { total?: number }>({ // Ensure this line is the start of the target
     name: "",
     ticker: "",
     type: "",
@@ -31,6 +31,13 @@ const AssetCategorySection = ({
     quantity: 0,
     total: 0
   });
+
+  // The original initialization object for newAsset is already correct once the type is fixed.
+  // The following is a placeholder to ensure the tool targets the useState line correctly if needed,
+  // but the primary change is to the type parameter of useState itself.
+  // This chunk might effectively be a no-op if the tool correctly changes the useState type parameter above.
+  // If the useState line was: const [newAsset, setNewAsset] = useState<Partial<Asset>>({ some: 'value' });
+  // Then this target would be: useState<Partial<Asset>>({
   const handleAddAsset = () => {
     if (!newAsset.name || !newAsset.ticker) {
       return;
@@ -52,7 +59,7 @@ const AssetCategorySection = ({
   };
 
   // Calcular métricas da seção
-  const sectionTotal = assets.reduce((sum, asset) => sum + asset.total, 0);
+  const sectionTotal = assets.reduce((sum, asset) => sum + asset.current_total_value_brl, 0);
   const assetCount = assets.length;
   return <div className="space-y-4 mb-8">
       <Card>

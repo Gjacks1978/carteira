@@ -7,13 +7,13 @@ interface AssetsSummaryCardsProps {
 
 const AssetsSummaryCards = ({ assets }: AssetsSummaryCardsProps) => {
   // Calcular métricas totais
-  const totalAllocated = assets.reduce((sum, asset) => sum + asset.total, 0);
+  const totalAllocated = assets.reduce((sum, asset) => sum + asset.current_total_value_brl, 0);
   const assetCount = assets.length;
   
   // Calcular alocação por setor/tipo
   const allocationBySector = assets.reduce((acc, asset) => {
     const sector = asset.type || "Outros";
-    acc[sector] = (acc[sector] || 0) + asset.total;
+    acc[sector] = (acc[sector] || 0) + asset.current_total_value_brl;
     return acc;
   }, {} as Record<string, number>);
 

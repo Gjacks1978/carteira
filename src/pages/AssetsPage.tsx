@@ -61,7 +61,7 @@ const AssetsPage = () => {
           type: item.type,
           price: Number(item.price),
           quantity: Number(item.quantity),
-          total: Number(item.total || 0),
+          current_total_value_brl: Number((item as any).current_total_value_brl || 0),
           return: Number(item.return_value),
           returnPercentage: Number(item.return_percentage),
           categoryId: item.category_id,
@@ -141,9 +141,9 @@ const AssetsPage = () => {
             type: newAsset.type || "Outros",
             price: newAsset.price || 0,
             quantity: newAsset.quantity || 0,
-            total: newAsset.total || 0,
-            return_value: 0,
-            return_percentage: 0,
+            current_total_value_brl: (newAsset as any).total || 0,
+            return_value: (newAsset as any).return || 0,
+            return_percentage: (newAsset as any).returnPercentage || 0,
             category_id: categoryId
           }
         ])
@@ -160,7 +160,7 @@ const AssetsPage = () => {
           type: data.type,
           price: Number(data.price),
           quantity: Number(data.quantity),
-          total: Number(data.total),
+          current_total_value_brl: Number((data as any).current_total_value_brl || 0),
           return: Number(data.return_value),
           returnPercentage: Number(data.return_percentage),
           categoryId: data.category_id,
@@ -185,6 +185,8 @@ const AssetsPage = () => {
 
   const handleUpdateAsset = async (updatedAsset: Asset) => {
     try {
+      const calculatedTotal = (updatedAsset.price || 0) * (updatedAsset.quantity || 0);
+
       const { error } = await supabase
         .from("assets")
         .update({
@@ -193,7 +195,7 @@ const AssetsPage = () => {
           type: updatedAsset.type,
           price: updatedAsset.price,
           quantity: updatedAsset.quantity,
-          total: updatedAsset.total,
+          current_total_value_brl: calculatedTotal,
           return_value: updatedAsset.return,
           return_percentage: updatedAsset.returnPercentage
         })
@@ -201,11 +203,10 @@ const AssetsPage = () => {
       
       if (error) throw error;
       
-      const updatedAssets = assets.map((asset) =>
-        asset.id === updatedAsset.id ? updatedAsset : asset
+      const assetsWithRecalculatedTotal = assets.map((asset) =>
+        asset.id === updatedAsset.id ? { ...updatedAsset, current_total_value_brl: calculatedTotal } : asset
       );
-      
-      setAssets(updatedAssets);
+      setAssets(assetsWithRecalculatedTotal);
       
       toast({
         title: "Ativo atualizado",
