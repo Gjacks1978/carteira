@@ -7,9 +7,17 @@ import AssetsSummaryCards from "@/components/assets/AssetsSummaryCards";
 import AssetCategorySection from "@/components/assets/AssetCategorySection";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Asset } from "@/types/assets";
+import { Asset, Category as AssetCategoryType } from "@/types/assets";
 import { useAuth } from "@/contexts/AuthContext";
 import { AllocationByClassCard } from "@/components/assets/AllocationByClassCard";
+import {
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+  DialogClose,
+  DialogContent // Adicionado para envolver o conteúdo do diálogo de exclusão
+} from "@/components/ui/dialog";
 
 interface Category {
   id: string;
@@ -17,26 +25,41 @@ interface Category {
 }
 
 const AssetsPage = () => {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<AssetCategoryType[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [totalCryptoValue, setTotalCryptoValue] = useState<number>(0);
   const [isAddCategoryDialogOpen, setIsAddCategoryDialogOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [isEditCategoryDialogOpen, setIsEditCategoryDialogOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<{ id: string, name: string } | null>(null);
+  const [editedCategoryName, setEditedCategoryName] = useState("");
+  const [isDeleteCategoryDialogOpen, setIsDeleteCategoryDialogOpen] = useState(false);
+  const [deletingCategory, setDeletingCategory] = useState<{ id: string, name: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
 
   useEffect(() => {
-    fetchCategoriesAndAssets();
-  }, []);
+    if (user) {
+      fetchCategoriesAndAssets();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
 
   const fetchCategoriesAndAssets = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       
       // Buscar categorias
       const { data: categoriesData, error: categoriesError } = await supabase
         .from("asset_categories")
-        .select("id, name")
+        .select("id, name, user_id, is_default")
+        .or(`user_id.eq.${user.id},is_default.eq.true`)
         .order("is_default", { ascending: false })
         .order("name");
       
@@ -45,12 +68,31 @@ const AssetsPage = () => {
       // Buscar todos os ativos
       const { data: assetsData, error: assetsError } = await supabase
         .from("assets")
-        .select("*");
+        .select("*")
+        .eq("user_id", user.id);
       
       if (assetsError) throw assetsError;
+
+      // BUSCAR DADOS DE CRIPTO E CALCULAR TOTAL
+      const { data: cryptoData, error: cryptoError } = await supabase
+        .from("crypto_assets") // Corrigido nome da tabela
+        .select("total_brl") // Corrigido para o nome da coluna conforme Supabase Studio
+        .eq("user_id", user.id); // Assumindo coluna user_id
+
+      if (cryptoError) throw cryptoError;
+
+      let calculatedTotalCryptoValue = 0;
+      if (cryptoData) {
+        calculatedTotalCryptoValue = cryptoData.reduce((sum, crypto) => {
+          const value = parseFloat(crypto.total_brl as any);
+          return sum + (isNaN(value) ? 0 : value);
+        }, 0);
+      }
+      setTotalCryptoValue(calculatedTotalCryptoValue);
+      // FIM DA BUSCA DE CRIPTO
       
       if (categoriesData) {
-        setCategories(categoriesData);
+        setCategories(categoriesData as AssetCategoryType[]);
       }
       
       if (assetsData) {
@@ -65,6 +107,7 @@ const AssetsPage = () => {
           return: Number(item.return_value),
           returnPercentage: Number(item.return_percentage),
           categoryId: item.category_id,
+          user_id: item.user_id
         }));
         
         setAssets(transformedAssets);
@@ -101,22 +144,42 @@ const AssetsPage = () => {
     }
 
     try {
+      // Obter o usuário atual da sessão
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        console.error("Error getting user or no user logged in:", userError);
+        toast({
+          variant: "destructive",
+          title: "Erro de Autenticação",
+          description: "Usuário não autenticado. Faça login para adicionar categorias.",
+        });
+        return;
+      }
+
+      const trimmedNewCategoryName = newCategoryName.trim(); // Usar nome trimado na inserção
+
       const { data, error } = await supabase
         .from("asset_categories")
-        .insert([{ name: newCategoryName, is_default: false }])
+        .insert([{ 
+            name: trimmedNewCategoryName, 
+            is_default: false, 
+            user_id: user.id 
+        }])
         .select()
         .single();
       
       if (error) throw error;
       
       if (data) {
-        setCategories([...categories, { id: data.id, name: data.name }]);
+        // Assumindo que 'data' retorna o objeto completo, incluindo id, name, user_id
+        setCategories([...categories, { id: data.id, name: data.name, user_id: data.user_id, is_default: data.is_default }]);
         setNewCategoryName("");
         setIsAddCategoryDialogOpen(false);
         
         toast({
           title: "Categoria adicionada",
-          description: `A categoria "${newCategoryName}" foi adicionada com sucesso`,
+          description: `A categoria "${trimmedNewCategoryName}" foi adicionada com sucesso`,
         });
       }
     } catch (error) {
@@ -252,6 +315,153 @@ const AssetsPage = () => {
     }
   };
 
+  const handleOpenEditCategoryDialog = (categoryId: string, currentName: string) => {
+    setEditingCategory({ id: categoryId, name: currentName });
+    setEditedCategoryName(currentName);
+    setIsEditCategoryDialogOpen(true);
+  };
+
+  const handleUpdateCategory = async () => {
+    if (!editingCategory || !editedCategoryName) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Dados da categoria inválidos.",
+      });
+      return;
+    }
+
+    const trimmedNewName = editedCategoryName.trim();
+
+    if (trimmedNewName === "") {
+      toast({
+        variant: "destructive",
+        title: "Erro de Validação",
+        description: "O nome da categoria não pode ser vazio.",
+      });
+      return;
+    }
+
+    if (trimmedNewName === editingCategory.name) {
+      toast({
+        title: "Nenhuma Alteração",
+        description: "O nome da categoria não foi alterado.",
+      });
+      setIsEditCategoryDialogOpen(false);
+      setEditingCategory(null);
+      setEditedCategoryName("");
+      return;
+    }
+
+    // Verificar se o novo nome da categoria já existe
+    const { data: existingCategories, error: fetchError } = await supabase
+      .from('asset_categories')
+      .select('name')
+      .eq('name', trimmedNewName)
+      .neq('id', editingCategory.id); // Excluir a categoria atual da verificação
+
+    if (fetchError) {
+      console.error('Erro ao verificar categorias existentes:', fetchError);
+      toast({
+        variant: "destructive",
+        title: "Erro no Servidor",
+        description: "Não foi possível verificar nomes de categoria duplicados.",
+      });
+      return;
+    }
+
+    if (existingCategories && existingCategories.length > 0) {
+      toast({
+        variant: "destructive",
+        title: "Erro de Validação",
+        description: `A categoria "${trimmedNewName}" já existe.`,
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("asset_categories")
+        .update({ name: trimmedNewName })
+        .eq("id", editingCategory.id);
+
+      if (error) throw error;
+
+      // Atualizar estado local
+      setCategories(prevCategories =>
+        prevCategories.map(cat =>
+          cat.id === editingCategory.id ? { ...cat, name: trimmedNewName } : cat
+        )
+      );
+
+      toast({ title: "Categoria Atualizada", description: `Categoria "${editingCategory.name}" renomeada para "${trimmedNewName}".` });
+      setIsEditCategoryDialogOpen(false);
+      setEditingCategory(null);
+      setEditedCategoryName("");
+
+    } catch (error) {
+      console.error("Erro ao atualizar categoria:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao Atualizar",
+        description: "Não foi possível atualizar a categoria.",
+      });
+    }
+  };
+
+  const handleOpenDeleteCategoryDialog = (categoryId: string, categoryName: string) => {
+    setDeletingCategory({ id: categoryId, name: categoryName });
+    setIsDeleteCategoryDialogOpen(true);
+  };
+
+  const handleConfirmDeleteCategory = async () => {
+    // TODO: Implement category deletion logic
+    if (!deletingCategory) return;
+
+    // Check if category has assets
+    const assetsInCategory = assets.filter(asset => asset.categoryId === deletingCategory.id);
+    if (assetsInCategory.length > 0) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao excluir",
+        description: `A categoria "${deletingCategory.name}" possui ativos. Mova ou exclua os ativos primeiro.`,
+      });
+      setIsDeleteCategoryDialogOpen(false);
+      setDeletingCategory(null);
+      return;
+    }
+    try {
+      if (!deletingCategory) return; // Adicionando uma verificação extra de segurança
+
+      const { error } = await supabase
+        .from("asset_categories")
+        .delete()
+        .eq("id", deletingCategory.id);
+
+      if (error) throw error;
+
+      // Atualizar estado local
+      setCategories(prevCategories =>
+        prevCategories.filter(cat => cat.id !== deletingCategory!.id)
+      );
+      
+      toast({ title: "Categoria Excluída", description: `A categoria "${deletingCategory.name}" foi excluída com sucesso.` });
+      setIsDeleteCategoryDialogOpen(false);
+      setDeletingCategory(null);
+
+    } catch (error) {
+      console.error("Erro ao excluir categoria:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao Excluir",
+        description: "Não foi possível excluir a categoria.",
+      });
+      // Mesmo em caso de erro, fechar o diálogo e limpar o estado.
+      setIsDeleteCategoryDialogOpen(false);
+      setDeletingCategory(null);
+    }
+  };
+
   const getAssetsByCategory = (categoryId: string) => {
     return assets.filter(asset => asset.categoryId === categoryId);
   };
@@ -293,7 +503,7 @@ const AssetsPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {/* AssetsSummaryCards ocupará 2 colunas em telas médias e grandes, 1 em pequenas */}
         <div className="md:col-span-2">
-          <AssetsSummaryCards assets={assets} /> 
+          <AssetsSummaryCards assets={assets} totalCryptoValue={totalCryptoValue} /> 
         </div>
         {/* AllocationByClassCard ocupará 1 coluna em telas médias e grandes, 1 em pequenas */}
         <div className="md:col-span-1">
@@ -323,11 +533,55 @@ const AssetsPage = () => {
                 onAddAsset={(newAsset) => handleAddAsset(category.id, newAsset)}
                 onUpdateAsset={handleUpdateAsset}
                 onDeleteAsset={handleDeleteAsset}
+                onEditCategory={handleOpenEditCategoryDialog}
+                onDeleteCategoryRequest={handleOpenDeleteCategoryDialog}
               />
             );
           })}
         </div>
       )}
+
+      {/* Modal para Renomear Categoria */}
+      <Dialog open={isEditCategoryDialogOpen} onOpenChange={setIsEditCategoryDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          {editingCategory && (
+            <AddAssetForm
+              title="Renomear Categoria"
+              description={`Renomeie a categoria "${editingCategory.name}".`}
+              inputLabel="Novo Nome da Categoria"
+              inputPlaceholder="Ex: Renda Fixa Global"
+              buttonLabel="Salvar Alterações"
+              inputValue={editedCategoryName}
+              onInputChange={(e) => setEditedCategoryName(e.target.value)}
+              onSubmit={handleUpdateCategory} // onClose foi removido daqui
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal para Confirmar Exclusão de Categoria */}
+      <Dialog open={isDeleteCategoryDialogOpen} onOpenChange={setIsDeleteCategoryDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
+            <DialogDescription>
+              {deletingCategory &&
+                `Tem certeza que deseja excluir a categoria "${deletingCategory.name}"? Esta ação não pode ser desfeita.`}
+              {deletingCategory && assets.some(asset => asset.categoryId === deletingCategory.id) &&
+                <p className="text-red-500 mt-2">Atenção: Esta categoria contém ativos. Se você excluir a categoria, os ativos associados podem ficar órfãos ou precisarão ser reatribuídos.</p>
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setIsDeleteCategoryDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDeleteCategory}>
+              Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

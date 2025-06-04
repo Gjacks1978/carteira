@@ -3,16 +3,17 @@ import { Asset } from "@/types/assets";
 
 interface AssetsSummaryCardsProps {
   assets: Asset[];
+  totalCryptoValue: number;
 }
 
-const AssetsSummaryCards = ({ assets }: AssetsSummaryCardsProps) => {
-  // Calcular métricas totais
-  const totalAllocated = assets.reduce((sum, asset) => sum + asset.current_total_value_brl, 0);
+const AssetsSummaryCards = ({ assets, totalCryptoValue }: AssetsSummaryCardsProps) => {
+  // Calcular métricas totais para os ativos desta página
+  const totalAllocatedAssets = assets.reduce((sum, asset) => sum + asset.current_total_value_brl, 0);
   const assetCount = assets.length;
   
   // Calcular alocação por setor/tipo
   const allocationBySector = assets.reduce((acc, asset) => {
-    const sector = asset.type || "Outros";
+    const sector = asset.type || "Outros"; // Usando type como setor para ativos
     acc[sector] = (acc[sector] || 0) + asset.current_total_value_brl;
     return acc;
   }, {} as Record<string, number>);
@@ -23,19 +24,21 @@ const AssetsSummaryCards = ({ assets }: AssetsSummaryCardsProps) => {
     { sector: "N/A", value: 0 }
   );
 
-  // Calcular percentual da carteira (assumindo um total de portfólio)
-  // Para uma implementação real, isso viria de um contexto global ou API
-  const portfolioPercentage = 100; // Placeholder - seria calculado com base no portfólio total
+  // Calcular percentual da carteira
+  const grandTotalPortfolio = totalAllocatedAssets + totalCryptoValue;
+  const calculatedPortfolioPercentage = grandTotalPortfolio > 0 
+    ? (totalAllocatedAssets / grandTotalPortfolio) * 100 
+    : 0;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Alocado</CardTitle>
+          <CardTitle className="text-sm font-medium">Total Alocado (Ativos)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {totalAllocated.toLocaleString("pt-BR", {
+            {totalAllocatedAssets.toLocaleString("pt-BR", {
               style: "currency",
               currency: "BRL",
             })}
@@ -48,7 +51,7 @@ const AssetsSummaryCards = ({ assets }: AssetsSummaryCardsProps) => {
       
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Alocação</CardTitle>
+          <CardTitle className="text-sm font-medium">Alocação (Setores Ativos)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
@@ -62,7 +65,7 @@ const AssetsSummaryCards = ({ assets }: AssetsSummaryCardsProps) => {
       
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Maior Setor</CardTitle>
+          <CardTitle className="text-sm font-medium">Maior Setor (Ativos)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{largestSector.sector}</div>
@@ -77,14 +80,14 @@ const AssetsSummaryCards = ({ assets }: AssetsSummaryCardsProps) => {
       
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">% da Carteira</CardTitle>
+          <CardTitle className="text-sm font-medium">% Ativos na Carteira</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {portfolioPercentage.toFixed(1)}%
+            {calculatedPortfolioPercentage.toFixed(1)}%
           </div>
           <p className="text-xs text-muted-foreground">
-            Do portfólio total
+            De R$ {grandTotalPortfolio.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} no portfólio total
           </p>
         </CardContent>
       </Card>

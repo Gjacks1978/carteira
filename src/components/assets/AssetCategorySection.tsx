@@ -1,8 +1,15 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
-import { PlusCircle, Download } from "lucide-react";
+import { PlusCircle, MoreHorizontal, Edit, Trash2, Download } from "lucide-react";
 import { Asset } from "@/types/assets";
 import AssetsTable from "./AssetsTable";
 import AddAssetForm from "./AddAssetForm";
@@ -13,6 +20,8 @@ interface AssetCategorySectionProps {
   onAddAsset: (asset: Partial<Asset> & { total?: number }) => void;
   onUpdateAsset: (asset: Asset) => void;
   onDeleteAsset: (id: string) => void;
+  onEditCategory: (categoryId: string, currentName: string) => void;
+  onDeleteCategoryRequest: (categoryId: string, categoryName: string) => void;
 }
 const AssetCategorySection = ({
   categoryName,
@@ -20,10 +29,12 @@ const AssetCategorySection = ({
   assets,
   onAddAsset,
   onUpdateAsset,
-  onDeleteAsset
+  onDeleteAsset,
+  onEditCategory,
+  onDeleteCategoryRequest,
 }: AssetCategorySectionProps) => {
   const [openAddAssetDialog, setOpenAddAssetDialog] = useState(false);
-  const [newAsset, setNewAsset] = useState<Partial<Asset> & { total?: number }>({ // Ensure this line is the start of the target
+  const [newAsset, setNewAsset] = useState<Partial<Asset> & { total?: number }>({
     name: "",
     ticker: "",
     type: "",
@@ -148,6 +159,28 @@ const AssetCategorySection = ({
                 }
               }]} onSubmit={handleAddAsset} />
               </Dialog>
+        {/* Category Management Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-9 w-9">
+              <MoreHorizontal className="h-5 w-5" />
+              <span className="sr-only">Opções da Categoria</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onEditCategory(categoryId, categoryName)}>
+              <Edit className="mr-2 h-4 w-4" />
+              Renomear Categoria
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onDeleteCategoryRequest(categoryId, categoryName)}
+              className="text-destructive focus:text-destructive focus:bg-destructive/10"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Excluir Categoria
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
             </div>
           </div>
         </CardHeader>

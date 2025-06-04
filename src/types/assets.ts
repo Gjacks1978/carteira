@@ -61,6 +61,13 @@ export interface PerformancePoint {
   benchmark: number;
 }
 
+export interface Category {
+  id: string;
+  name: string;
+  user_id: string;
+  is_default: boolean;
+}
+
 export interface InvestmentData {
   totalInvested: number;
   totalReturn: number;
