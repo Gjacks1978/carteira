@@ -418,6 +418,19 @@ const AssetsPage = () => {
     // TODO: Implement category deletion logic
     if (!deletingCategory) return;
 
+    // Verificar se a categoria a ser excluída é uma categoria padrão
+    const categoryData = categories.find(cat => cat.id === deletingCategory.id);
+    if (categoryData && categoryData.is_default) {
+      toast({
+        variant: "destructive",
+        title: "Operação Não Permitida",
+        description: `A categoria "${deletingCategory.name}" é padrão e não pode ser excluída.`,
+      });
+      setIsDeleteCategoryDialogOpen(false);
+      setDeletingCategory(null);
+      return;
+    }
+
     // Check if category has assets
     const assetsInCategory = assets.filter(asset => asset.categoryId === deletingCategory.id);
     if (assetsInCategory.length > 0) {
