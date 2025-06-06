@@ -7,15 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-// Definindo SnapshotItem aqui temporariamente. Idealmente, viria de @/types/...
-interface SnapshotItem {
-  id: string;
-  asset_name: string;
-  asset_category_name: string;
-  total_value_brl: number;
-  is_crypto_total: boolean;
-}
+import { SnapshotItem } from '@/types/reports'; // <-- IMPORTAR DE TYPES
 
 interface SnapshotItemsTableProps {
   items: SnapshotItem[];

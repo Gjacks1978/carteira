@@ -14,27 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import SnapshotItemsTable from './SnapshotItemsTable'; // <-- IMPORTAR NOVO COMPONENTE
-
-interface SnapshotItem {
-  id: string;
-  asset_name: string;
-  asset_category_name: string;
-  total_value_brl: number;
-  is_crypto_total: boolean;
-}
-
-// Interface estendida para incluir o total calculado
-interface SnapshotGroupWithTotal extends SnapshotGroup {
-  totalPatrimonioGrupo: number;
-}
-
-interface SnapshotGroup {
-  id: string;
-  created_at: string;
-  notes?: string | null;
-  snapshot_items: SnapshotItem[];
-  user_id: string;
-}
+import { SnapshotItem, SnapshotGroup, SnapshotGroupWithTotal } from '@/types/reports'; // <-- IMPORTAR DE TYPES
 
 interface SnapshotHistoryTableProps {
   refreshKey: number;
