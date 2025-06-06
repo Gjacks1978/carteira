@@ -49,7 +49,7 @@ const ReportsPage: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <SnapshotHistoryTable refreshKey={refreshKey} /> {/* <-- USAR O COMPONENTE E PASSAR REFRESH KEY */}
+            <SnapshotHistoryTable refreshKey={refreshKey} onSnapshotDeleted={handleSnapshotSuccess} />
           </CardContent>
         </Card>
 
