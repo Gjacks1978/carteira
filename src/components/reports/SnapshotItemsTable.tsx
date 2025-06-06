@@ -41,7 +41,7 @@ const SnapshotItemsTable: React.FC<SnapshotItemsTableProps> = ({ items }) => {
           {items.map((item) => (
             <TableRow 
               key={item.id} 
-              className={`${item.is_crypto_total ? 'bg-primary/10' : ''} hover:bg-muted/40 border-b-0`} // Removendo borda inferior se for a última
+              className={"hover:bg-muted/40 border-b-0"} // Removendo borda inferior se for a última
             >
               <TableCell className="py-2 font-medium">{item.asset_name}</TableCell> {/* Ajuste padding se necessário */}
               <TableCell className="py-2">{item.asset_category_name}</TableCell>

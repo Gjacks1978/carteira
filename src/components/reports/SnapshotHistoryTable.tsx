@@ -169,9 +169,8 @@ const SnapshotHistoryTable: React.FC<SnapshotHistoryTableProps> = ({ refreshKey,
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[50px]"></TableHead> {/* Coluna para botão de expandir */}
-            <TableHead>Data</TableHead>
-            <TableHead>Notas</TableHead>
+            <TableHead className="w-[180px]">Data</TableHead>
+            <TableHead className="min-w-[200px]">Notas</TableHead>
             <TableHead className="text-right">Patrimônio Total (R$)</TableHead>
             <TableHead className="w-[120px] text-center">Ações</TableHead> {/* Coluna Ações com expandir e excluir */}
           </TableRow>
@@ -180,6 +179,13 @@ const SnapshotHistoryTable: React.FC<SnapshotHistoryTableProps> = ({ refreshKey,
           {snapshotGroups.map((group) => (
             <React.Fragment key={group.id}>
               <TableRow className="hover:bg-muted/50 data-[state=open]:bg-muted/50">
+                <TableCell>{new Date(group.created_at).toLocaleString('pt-BR')}</TableCell>
+                <TableCell className="max-w-xs truncate" title={group.notes || undefined}>
+                  {group.notes || '-'}
+                </TableCell>
+                <TableCell className="text-right font-medium">
+                  {group.totalPatrimonioGrupo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </TableCell>
                 <TableCell>
                   <div className="flex justify-center items-center space-x-1">
                     <Button variant="ghost" size="icon" onClick={() => toggleRowExpansion(group.id)} aria-label={expandedRows[group.id] ? "Recolher" : "Expandir"}>
@@ -189,13 +195,6 @@ const SnapshotHistoryTable: React.FC<SnapshotHistoryTableProps> = ({ refreshKey,
                       <Trash2 className="h-4 w-4 text-destructive hover:text-destructive/80" />
                     </Button>
                   </div>
-                </TableCell>
-                <TableCell>{new Date(group.created_at).toLocaleString('pt-BR')}</TableCell>
-                <TableCell className="max-w-xs truncate" title={group.notes || undefined}>
-                  {group.notes || '-'}
-                </TableCell>
-                <TableCell className="text-right font-medium">
-                  {group.totalPatrimonioGrupo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </TableCell>
               </TableRow>
               {expandedRows[group.id] && (
