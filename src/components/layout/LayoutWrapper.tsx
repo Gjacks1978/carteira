@@ -28,7 +28,7 @@ const LayoutWrapper = () => {
         </div>
       </div>
       <div className="flex flex-col">
-        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-zinc-50">
+        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background">
           <Outlet />
         </main>
       </div>

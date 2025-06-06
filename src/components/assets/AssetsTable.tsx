@@ -33,9 +33,9 @@ const AssetsTable = ({ assets, onUpdate, onDelete }: AssetsTableProps) => {
   const handleConfirmEdit = () => {
     if (editingAsset) {
       // Recalculate total
-      const updatedAsset = {
+      const updatedAsset: Asset = {
         ...editingAsset,
-        total: editingAsset.price * editingAsset.quantity
+        current_total_value_brl: (editingAsset.price || 0) * (editingAsset.quantity || 0)
       };
       onUpdate(updatedAsset);
       setIsEditDialogOpen(false);
@@ -67,7 +67,7 @@ const AssetsTable = ({ assets, onUpdate, onDelete }: AssetsTableProps) => {
 
     // Recalculate total if price or quantity changes
     if (field === 'price' || field === 'quantity') {
-      updatedAsset.total = updatedAsset.price * updatedAsset.quantity;
+      (updatedAsset as Asset).current_total_value_brl = Number(updatedAsset.price || 0) * Number(updatedAsset.quantity || 0);
     }
     onUpdate(updatedAsset);
   };
@@ -98,7 +98,7 @@ const AssetsTable = ({ assets, onUpdate, onDelete }: AssetsTableProps) => {
 
   return (
     <>
-      <div className="rounded-md border bg-white">
+      <div className="rounded-md border bg-table-background">
         <Table>
           <TableHeader>
             <TableRow>

@@ -73,8 +73,8 @@ const AssetCategorySection = ({
   const sectionTotal = assets.reduce((sum, asset) => sum + asset.current_total_value_brl, 0);
   const assetCount = assets.length;
   return <div className="space-y-4 mb-8">
-      <Card>
-        <CardHeader className="bg-zinc-100">
+      <Card className="bg-card">
+        <CardHeader>
           <div className="flex justify-between items-center">
             <div>
               <CardTitle className="text-xl capitalize">{categoryName}</CardTitle>
@@ -184,7 +184,7 @@ const AssetCategorySection = ({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="bg-zinc-100">
+        <CardContent>
           <AssetsTable assets={assets} onUpdate={onUpdateAsset} onDelete={onDeleteAsset} />
         </CardContent>
       </Card>

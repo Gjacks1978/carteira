@@ -110,7 +110,7 @@ const CryptoTable = ({
 
   return (
     <>
-      <div className="rounded-md border">
+      <div className="rounded-md border bg-table-background">
         <Table>
           <TableHeader>
             <TableRow>

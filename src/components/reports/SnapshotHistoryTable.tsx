@@ -97,32 +97,32 @@ const SnapshotHistoryTable: React.FC<SnapshotHistoryTableProps> = ({ refreshKey 
   return (
     <div className="space-y-6">
       {snapshotGroups.map((group) => (
-        <div key={group.id} className="bg-white shadow-md rounded-lg p-6">
+        <div key={group.id} className="bg-card shadow-md rounded-lg p-6">
           <div className="mb-4">
-            <h3 className="text-xl font-semibold text-gray-800">
+            <h3 className="text-xl font-semibold text-foreground">
               Snapshot de: {new Date(group.created_at).toLocaleString('pt-BR')}
             </h3>
             {group.notes && (
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 <strong>Notas:</strong> {group.notes}
               </p>
             )}
           </div>
           {group.snapshot_items && group.snapshot_items.length > 0 ? (
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-muted/50">
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ativo</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoria</th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Valor Total (R$)</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Ativo</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Categoria</th>
+                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Valor Total (R$)</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-table-background divide-border">
                 {group.snapshot_items.map((item) => (
-                  <tr key={item.id} className={item.is_crypto_total ? 'bg-blue-50' : ''}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.asset_name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.asset_category_name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                  <tr key={item.id} className={item.is_crypto_total ? 'bg-primary/10' : ''}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">{item.asset_name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{item.asset_category_name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground text-right">
                       {item.total_value_brl.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </td>
                   </tr>
@@ -130,7 +130,7 @@ const SnapshotHistoryTable: React.FC<SnapshotHistoryTableProps> = ({ refreshKey 
               </tbody>
             </table>
           ) : (
-            <p className="text-sm text-gray-500">Nenhum item neste snapshot.</p>
+            <p className="text-sm text-muted-foreground">Nenhum item neste snapshot.</p>
           )}
         </div>
       ))}

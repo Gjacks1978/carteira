@@ -9,6 +9,7 @@
 
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
+    --table-background: 0 0% 100%; /* Igual ao card no tema claro por padrão */
 
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
@@ -55,8 +56,9 @@
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 217.2 32.6% 17.5%; /* Usando a cor de 'secondary' para o card no modo escuro */
     --card-foreground: 210 40% 98%;
+    --table-background: 217.2 32.6% 22.5%; /* Ligeiramente mais claro que o card no modo escuro */
 
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
