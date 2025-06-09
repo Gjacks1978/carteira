@@ -6,9 +6,11 @@ import RegisterSnapshotModal from '@/components/reports/RegisterSnapshotModal';
 import SnapshotHistoryTable from '@/components/reports/SnapshotHistoryTable';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AssetPivotTable from '@/components/reports/AssetPivotTable';
+import PatrimonioTotalChart from '@/components/reports/PatrimonioTotalChart';
+import AssetEvolutionStackedBarChart from '@/components/reports/AssetEvolutionStackedBarChart';
 import { supabase } from '@/lib/supabaseClient'; // Import Supabase client
 import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
-import { SnapshotGroupWithTotal } from '@/types/reports'; // Import type
+import { SnapshotGroupWithTotal, SnapshotItem } from '@/types/reports'; // Import type
 import { toast } from 'sonner';
 
 const ReportsPage: React.FC = () => {
@@ -59,16 +61,16 @@ const ReportsPage: React.FC = () => {
           groupsData.map(async (group) => {
             const { data: items, error: itemsError } = await supabase
               .from('snapshot_items')
-              .select('id, total_value_brl, asset_name') // Select a few more fields for clarity
+              .select('id, asset_id, asset_name, asset_category_name, total_value_brl, is_crypto_total')
               .eq('snapshot_group_id', group.id);
 
             if (itemsError) {
               console.error(`[ReportsPage] Error fetching items for group ${group.id}:`, itemsError);
-              return { ...group, totalPatrimonioGrupo: 0, itemsData: [] }; // Return 0 if items fetch fails
+              return { ...group, totalPatrimonioGrupo: 0, snapshot_items: [] }; // Return 0 if items fetch fails
             }
 
             const totalPatrimonioGrupo = items?.reduce((sum, item) => sum + (item.total_value_brl || 0), 0) || 0;
-            return { ...group, totalPatrimonioGrupo, itemsData: items || [] }; 
+            return { ...group, totalPatrimonioGrupo, snapshot_items: items as SnapshotItem[] || [] }; 
           })
         );
         setSnapshotGroupsData(groupsWithTotals);
@@ -89,29 +91,26 @@ const ReportsPage: React.FC = () => {
     <div className="container mx-auto py-8 px-4 md:px-6 lg:px-8">
         <h1 className="text-3xl font-bold mb-6">Relatórios de Patrimônio</h1>
 
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Registrar Novos Saldos</CardTitle>
-            <CardDescription>
-              Clique no botão abaixo para registrar os saldos e preços atuais dos seus ativos.
-              Isso criará um "snapshot" do seu portfólio na data de hoje, permitindo que você acompanhe a evolução do seu patrimônio.
-            </CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <Button size="lg" onClick={handleRegisterSnapshot}>
-              Registrar Saldos Atuais
-            </Button>
-          </CardFooter>
-        </Card>
+        <div className="grid grid-cols-1 gap-6 mb-8">
+          <PatrimonioTotalChart snapshotGroupsData={snapshotGroupsData} isLoading={pageIsLoading} />
+          <AssetEvolutionStackedBarChart snapshotGroupsData={snapshotGroupsData} isLoading={pageIsLoading} />
+        </div>
+
+        
 
         <Separator className="my-8" />
 
         <Card>
-          <CardHeader>
-            <CardTitle>Análise de Snapshots</CardTitle>
-            <CardDescription>
-              Visualize o histórico de seus snapshots por data ou analise a evolução de cada ativo ao longo do tempo.
-            </CardDescription>
+          <CardHeader className="flex flex-row justify-between items-start">
+            <div>
+              <CardTitle>Evolução de Patrimônio</CardTitle>
+              <CardDescription>
+                Visualize o histórico de seus snapshots por data ou analise a evolução de cada ativo ao longo do tempo.
+              </CardDescription>
+            </div>
+            <Button onClick={handleRegisterSnapshot} className="ml-4 whitespace-nowrap">
+              Registrar Saldos Atuais
+            </Button>
           </CardHeader>
           <CardContent className="px-0 sm:px-6"> {/* Remover padding horizontal padrão do CardContent se as Tabs o gerenciarem */}
             <Tabs defaultValue="history" className="w-full">

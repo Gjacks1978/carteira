@@ -10,51 +10,143 @@ interface AssetPivotTableProps {
   fetchError: string | null;
 }
 
+const formatCurrency = (value: number | null) => {
+  if (value === null || value === undefined) return '-';
+  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+};
+
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+};
+
+interface AssetEvolutionRow {
+  uniqueKey: string;
+  assetName: string;
+  assetCategory: string | null;
+  values: (number | null)[];
+}
+
 const AssetPivotTable: React.FC<AssetPivotTableProps> = ({ snapshotGroupsData, isLoading, fetchError }) => {
-  // Lógica para processar os dados e transformá-los para a visualização pivotada
-  // Por enquanto, apenas um placeholder
+  const processedData = React.useMemo(() => {
+    if (!snapshotGroupsData || snapshotGroupsData.length === 0) {
+      return { dateColumns: [], assetRows: [] };
+    }
+
+    // Sort snapshot groups by date ascending (oldest first)
+    const sortedGroups = [...snapshotGroupsData].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+    const dateColumns = sortedGroups.map(group => group.created_at);
+    const formattedDateColumns = dateColumns.map(formatDate);
+
+    const assetRowsMap = new Map<string, AssetEvolutionRow>();
+
+    sortedGroups.forEach((group, dateIndex) => {
+      group.snapshot_items.forEach(item => {
+        const uniqueKey = item.is_crypto_total ? 'CRYPTO_TOTAL_CONSOLIDATED' : item.asset_id;
+        if (!uniqueKey) return; // Should not happen for non-crypto if asset_id is guaranteed
+
+        if (!assetRowsMap.has(uniqueKey)) {
+          assetRowsMap.set(uniqueKey, {
+            uniqueKey,
+            assetName: item.asset_name,
+            assetCategory: item.asset_category_name,
+            values: Array(dateColumns.length).fill(null),
+          });
+        }
+        const assetRow = assetRowsMap.get(uniqueKey)!;
+        // Ensure assetName and category are updated if they somehow change (e.g. for crypto total if name was generic initially)
+        // For most assets, these should be consistent if asset_id is the key.
+        assetRow.assetName = item.asset_name; 
+        assetRow.assetCategory = item.asset_category_name;
+        assetRow.values[dateIndex] = item.total_value_brl;
+      });
+    });
+
+    const calculatedAssetRows = Array.from(assetRowsMap.values());
+
+    const totalRowValues: (number | null)[] = Array(dateColumns.length).fill(null);
+    if (calculatedAssetRows.length > 0) {
+      for (let i = 0; i < dateColumns.length; i++) {
+        let sumForDate: number | null = 0;
+        let hasNonNullValue = false;
+        calculatedAssetRows.forEach(row => {
+          if (row.values[i] !== null) {
+            sumForDate = (sumForDate === null ? 0 : sumForDate) + row.values[i]!;
+            hasNonNullValue = true;
+          }
+        });
+        totalRowValues[i] = hasNonNullValue ? sumForDate : null;
+      }
+    }
+
+    const totalRow: AssetEvolutionRow | null = calculatedAssetRows.length > 0 ? {
+      uniqueKey: 'GRAND_TOTAL',
+      assetName: 'TOTAL',
+      assetCategory: '', // No category for total
+      values: totalRowValues,
+    } : null;
+
+    return { dateColumns: formattedDateColumns, assetRows: calculatedAssetRows, totalRow };
+  }, [snapshotGroupsData]);
+
+  if (isLoading) return <p className="text-center text-muted-foreground py-8">Carregando dados...</p>;
+  if (fetchError) return <p className="text-center text-destructive py-8">Erro ao carregar dados: {fetchError}</p>;
+  if (!snapshotGroupsData || snapshotGroupsData.length === 0) {
+    return <p className="text-center text-muted-foreground py-8">Nenhum snapshot registrado para análise.</p>;
+  }
+
+  const { dateColumns, assetRows, totalRow } = processedData;
+
+  if (assetRows.length === 0) {
+    return <p className="text-center text-muted-foreground py-8">Nenhum item de snapshot encontrado para exibir na tabela de evolução.</p>;
+  }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Evolução de Ativos ao Longo do Tempo</CardTitle>
         <CardDescription>
-          Acompanhe a variação de quantidade e valor de cada ativo através dos snapshots.
+          Acompanhe a variação de valor de cada ativo através dos snapshots.
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        {isLoading && <p className="text-center text-muted-foreground py-8">Carregando dados...</p>}
-        {fetchError && <p className="text-center text-destructive py-8">Erro ao carregar dados: {fetchError}</p>}
-        {!isLoading && !fetchError && snapshotGroupsData.length === 0 && (
-          <p className="text-center text-muted-foreground py-8">Nenhum snapshot registrado para análise.</p>
-        )}
-        {!isLoading && !fetchError && snapshotGroupsData.length > 0 && (
-          <p className="text-center text-muted-foreground py-8">
-            Implementação da tabela pivotada por ativo pendente. {snapshotGroupsData.length} grupo(s) de snapshot carregado(s).
-          </p>
-        )}
-        {/* 
-          Futura implementação da tabela pivotada:
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Ativo</TableHead>
-                <TableHead>Snapshot 1 (Data)</TableHead>
-                <TableHead>Snapshot 2 (Data)</TableHead>
-                <TableHead>...</TableHead>
+      <CardContent className="overflow-x-auto">
+        <Table className="min-w-full">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="sticky left-0 bg-card z-10">Ativo</TableHead>
+              <TableHead>Categoria</TableHead>
+              {dateColumns.map(date => (
+                <TableHead key={date} className="text-right">{date}</TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {assetRows.map(row => (
+              <TableRow key={row.uniqueKey}>
+                <TableCell className="font-medium sticky left-0 bg-card z-10">{row.assetName}</TableCell>
+                <TableCell>{row.assetCategory || '-'}</TableCell>
+                {row.values.map((value, index) => (
+                  <TableCell key={`${row.uniqueKey}-val-${index}`} className="text-right">{formatCurrency(value)}</TableCell>
+                ))}
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              // Exemplo de linha:
-              // <TableRow>
-              //   <TableCell>BTC</TableCell>
-              //   <TableCell>Qtd: 1, Valor: R$ X</TableCell>
-              //   <TableCell>Qtd: 1.1, Valor: R$ Y</TableCell>
-              //   <TableCell>...</TableCell>
-              // </TableRow>
+            ))}
+          </TableBody>
+          {totalRow && (
+            <TableBody className="border-t-2 border-primary">
+              <TableRow className="bg-muted/50 hover:bg-muted/60">
+                <TableCell className="font-bold sticky left-0 bg-muted/50 z-10">{totalRow.assetName}</TableCell>
+                <TableCell className="font-bold">{totalRow.assetCategory}</TableCell>
+                {totalRow.values.map((value, index) => (
+                  <TableCell key={`total-val-${index}`} className="text-right font-bold">{formatCurrency(value)}</TableCell>
+                ))}
+              </TableRow>
             </TableBody>
-          </Table>
-        */}
+          )}
+        </Table>
       </CardContent>
     </Card>
   );
