@@ -26,77 +26,19 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 interface SnapshotHistoryTableProps {
-  refreshKey: number; // Mantido para compatibilidade, mas onSnapshotDeleted é preferível para refresh
+  snapshotGroupsData: SnapshotGroupWithTotal[];
+  isLoading: boolean;
+  fetchError: string | null;
   onSnapshotDeleted: () => void; // Callback para atualizar a lista na ReportsPage
+  // refreshKey pode ser removido se a atualização dos dados for gerenciada pelo pai através das novas props
 }
 
-const SnapshotHistoryTable: React.FC<SnapshotHistoryTableProps> = ({ refreshKey, onSnapshotDeleted }) => {
-  const { user } = useAuth();
-  // Usar a interface estendida para o estado
-  const [snapshotGroups, setSnapshotGroups] = useState<SnapshotGroupWithTotal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const SnapshotHistoryTable: React.FC<SnapshotHistoryTableProps> = ({ snapshotGroupsData, isLoading, fetchError, onSnapshotDeleted }) => {
+  const { user } = useAuth(); // User ainda pode ser útil para outras lógicas, como permissões futuras
+
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({}); // <-- ESTADO PARA LINHAS EXPANDIDAS
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [snapshotToDelete, setSnapshotToDelete] = useState<SnapshotGroupWithTotal | null>(null);
-
-  useEffect(() => {
-    const fetchSnapshotHistory = async () => {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const { data, error: fetchError } = await supabase
-          .from('snapshot_groups')
-          .select(`
-            id,
-            created_at,
-            notes,
-            user_id,
-            snapshot_items (
-              id,
-              asset_name,
-              asset_category_name,
-              total_value_brl,
-              is_crypto_total
-            )
-          `)
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (fetchError) {
-          throw fetchError;
-        }
-
-        // Processar dados para calcular o total e garantir que snapshot_items é um array
-        const processedData = data?.map(group => {
-          const items = group.snapshot_items || [];
-          const totalPatrimonioGrupo = items.reduce((sum, currentItem) => sum + currentItem.total_value_brl, 0);
-          return {
-            ...group,
-            snapshot_items: items,
-            totalPatrimonioGrupo, // <-- ADICIONAR TOTAL CALCULADO
-          };
-        }) || [];
-
-        setSnapshotGroups(processedData as SnapshotGroupWithTotal[]);
-
-      } catch (e: any) {
-        console.error('Erro ao buscar histórico de snapshots:', e);
-        setError('Falha ao carregar o histórico de snapshots.');
-        toast.error('Falha ao carregar o histórico de snapshots.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSnapshotHistory();
-  }, [user, refreshKey]);
 
   const toggleRowExpansion = (groupId: string) => {
     setExpandedRows(prev => ({
@@ -114,7 +56,6 @@ const SnapshotHistoryTable: React.FC<SnapshotHistoryTableProps> = ({ refreshKey,
     if (!snapshotToDelete || !user) return;
 
     try {
-      setLoading(true);
       // Etapa 1: Excluir snapshot_items associados (necessário se ON DELETE CASCADE não estiver configurado)
       const { error: itemsError } = await supabase
         .from('snapshot_items')
@@ -147,19 +88,12 @@ const SnapshotHistoryTable: React.FC<SnapshotHistoryTableProps> = ({ refreshKey,
     } finally {
       setIsDeleteDialogOpen(false);
       setSnapshotToDelete(null);
-      setLoading(false); // Garante que o loading seja desativado
     }
   };
 
-  if (loading) {
-    return <div className="text-center p-4">Carregando histórico...</div>;
-  }
-
-  if (error) {
-    return <div className="text-center p-4 text-red-500">{error}</div>;
-  }
-
-  if (snapshotGroups.length === 0) {
+  if (isLoading) return <p className="text-center p-4">Carregando histórico...</p>;
+  if (fetchError) return <p className="text-center p-4 text-destructive">Erro ao carregar histórico: {fetchError}</p>;
+  if (snapshotGroupsData.length === 0) {
     return <div className="text-center p-4">Nenhum snapshot registrado ainda.</div>;
   }
 
@@ -176,7 +110,7 @@ const SnapshotHistoryTable: React.FC<SnapshotHistoryTableProps> = ({ refreshKey,
           </TableRow>
         </TableHeader>
         <TableBody>
-          {snapshotGroups.map((group) => (
+          {snapshotGroupsData.map((group) => (
             <React.Fragment key={group.id}>
               <TableRow className="hover:bg-muted/50 data-[state=open]:bg-muted/50">
                 <TableCell>{new Date(group.created_at).toLocaleString('pt-BR')}</TableCell>

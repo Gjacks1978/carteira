@@ -162,7 +162,11 @@ const RegisterSnapshotModal: React.FC<RegisterSnapshotModalProps> = ({ isOpen, o
       const snapshotGroupId = groupData.id;
 
       const itemsToInsert = snapshotDisplayItems.map(item => {
-        const submittedValue = parseFloat(formValues[item.id]?.replace(',', '.') || '0');
+        const rawValue = formValues[item.id] || ''; // Garante que temos uma string, mesmo que vazia
+        const cleanedValue = rawValue.replace(',', '.');
+        let numValue = parseFloat(cleanedValue);
+        const submittedValue = isNaN(numValue) ? 0 : numValue;
+
         if (item.itemType === 'NON_CRYPTO_ASSET') {
           return {
             snapshot_group_id: snapshotGroupId,
@@ -186,7 +190,11 @@ const RegisterSnapshotModal: React.FC<RegisterSnapshotModalProps> = ({ isOpen, o
 
       if (itemsToInsert.length > 0) {
         const { error: itemsError } = await supabase.from('snapshot_items').insert(itemsToInsert);
-        if (itemsError) throw itemsError;
+        if (itemsError) {
+          throw itemsError;
+        }
+      } else {
+        console.warn('[RegisterSnapshotModal] Tentativa de salvar snapshot sem itens.');
       }
 
       toast.success('Snapshot registrado com sucesso!');
