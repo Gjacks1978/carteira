@@ -24,12 +24,14 @@ const Sidebar = () => {
 
   return (
     <TooltipProvider>
-      <div className="space-y-1 py-2 px-2">
+      <div className="space-y-1.5 py-3 px-2">
         <NavLink
           to="/"
           className={({ isActive }) =>
-            `flex items-center py-2 px-3 rounded-md transition-colors ${
-              isActive ? "bg-accent text-accent-foreground" : "hover:bg-muted"
+            `flex items-center py-2.5 px-3 rounded-lg text-sm font-medium transition-all ${
+              isActive 
+                ? "bg-accent text-accent-foreground shadow-sm" 
+                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
             }`
           }
         >
@@ -39,8 +41,10 @@ const Sidebar = () => {
         <NavLink
           to="/ativos"
           className={({ isActive }) =>
-            `flex items-center py-2 px-3 rounded-md transition-colors ${
-              isActive ? "bg-accent text-accent-foreground" : "hover:bg-muted"
+            `flex items-center py-2.5 px-3 rounded-lg text-sm font-medium transition-all ${
+              isActive 
+                ? "bg-accent text-accent-foreground shadow-sm" 
+                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
             }`
           }
         >
@@ -50,8 +54,10 @@ const Sidebar = () => {
         <NavLink
           to="/cripto"
           className={({ isActive }) =>
-            `flex items-center py-2 px-3 rounded-md transition-colors ${
-              isActive ? "bg-accent text-accent-foreground" : "hover:bg-muted"
+            `flex items-center py-2.5 px-3 rounded-lg text-sm font-medium transition-all ${
+              isActive 
+                ? "bg-accent text-accent-foreground shadow-sm" 
+                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
             }`
           }
         >
@@ -61,8 +67,10 @@ const Sidebar = () => {
         <NavLink
           to="/relatorios"
           className={({ isActive }) =>
-            `flex items-center py-2 px-3 rounded-md transition-colors ${
-              isActive ? "bg-accent text-accent-foreground" : "hover:bg-muted"
+            `flex items-center py-2.5 px-3 rounded-lg text-sm font-medium transition-all ${
+              isActive 
+                ? "bg-accent text-accent-foreground shadow-sm" 
+                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
             }`
           }
         >
@@ -70,11 +78,11 @@ const Sidebar = () => {
           <span>Relatórios</span>
         </NavLink>
 
-        <div className="pt-4 mt-4 border-t border-muted">
-          <div className="flex items-center py-2 px-3 text-sm">
-            <DollarSign className="h-4 w-4 mr-2 text-muted-foreground" />
+        <div className="pt-4 mt-4 border-t border-muted/30">
+          <div className="flex items-center py-2.5 px-3 text-sm bg-muted/20 rounded-lg border border-muted/30">
+            <DollarSign className="h-4 w-4 mr-2 text-primary" />
             <span className="text-muted-foreground mr-1">USD/BRL:</span>
-            <span className="font-semibold">
+            <span className="font-semibold text-foreground">
               {exchangeRateInfo.rate.toLocaleString("pt-BR", {
                 style: "currency",
                 currency: "BRL",
@@ -102,7 +110,7 @@ const Sidebar = () => {
         </div>
 
         {/* User Info / Theme Toggle Footer Bar */}
-        <div className="mt-auto flex items-center justify-between p-3 border-t border-border">
+        <div className="mt-4 pt-4 flex items-center justify-between px-3 border-t border-muted/20">
           <div className="text-sm text-muted-foreground">
             {/* Futuro local para nome/avatar do usuário */}
           </div>

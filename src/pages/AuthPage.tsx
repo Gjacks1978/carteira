@@ -57,7 +57,7 @@ const AuthPage = () => {
     <div className="h-screen flex items-center justify-center bg-background p-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold">Carteira Lovable</h1>
+          <h1 className="text-3xl font-bold">MyPortfolio</h1>
           <p className="text-muted-foreground mt-2">
             Gerencie seus investimentos de forma simples e eficiente
           </p>

@@ -71,49 +71,119 @@ const PerformanceChart = ({ period, portfolioHistoryData, isLoading }: Performan
             bottom: 5,
           }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
+          <CartesianGrid 
+            strokeDasharray="3 3" 
+            stroke="hsl(var(--muted-foreground))" 
+            opacity={0.2}
+            vertical={false}
+          />
           <XAxis 
             dataKey="date" 
-            tick={{ fontSize: 12 }} 
+            tick={{ 
+              fontSize: 11, 
+              fill: 'hsl(var(--muted-foreground))',
+              fontFamily: 'Inter, sans-serif'
+            }} 
+            tickLine={false}
+            axisLine={{ stroke: 'hsl(var(--border))' }}
             tickFormatter={(value) => value.split("-").slice(1).reverse().join("/")} 
           />
           <YAxis 
-            tick={{ fontSize: 12 }}
+            tick={{ 
+              fontSize: 11, 
+              fill: 'hsl(var(--muted-foreground))',
+              fontFamily: 'Inter, sans-serif'
+            }}
+            tickLine={false}
+            axisLine={{ stroke: 'hsl(var(--border))' }}
             tickFormatter={(value) => 
               `R$${value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}` 
             }
+            width={90}
           />
           <Tooltip 
-            formatter={(value) => 
+            contentStyle={{
+              backgroundColor: 'hsl(var(--card))',
+              border: '1px solid hsl(var(--border))',
+              borderRadius: '8px',
+              padding: '8px 12px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+            }}
+            itemStyle={{ 
+              color: 'hsl(var(--foreground))',
+              fontSize: '0.875rem',
+              fontWeight: 500,
+              padding: '2px 0'
+            }}
+            labelStyle={{ 
+              color: 'hsl(var(--foreground))',
+              fontWeight: 600,
+              marginBottom: '4px',
+              fontSize: '0.875rem'
+            }}
+            formatter={(value, name, props) => [
               Number(value).toLocaleString("pt-BR", {
                 style: "currency",
                 currency: "BRL",
-              })
-            } 
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              }),
+              name
+            ]}
             labelFormatter={(label) => {
               const date = new Date(label);
-              return date.toLocaleDateString("pt-BR");
+              return date.toLocaleDateString("pt-BR", {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+              });
             }}
           />
-          <Legend />
+          <Legend 
+            wrapperStyle={{
+              paddingTop: '10px',
+              fontSize: '0.75rem',
+              color: 'hsl(var(--muted-foreground))'
+            }}
+            formatter={(value) => (
+              <span style={{ color: 'hsl(var(--foreground))' }}>
+                {value}
+              </span>
+            )}
+          />
           <Line
             type="monotone"
             dataKey="portfolio"
             name="Portfólio"
-            stroke="#3b82f6"
-            strokeWidth={2}
+            stroke="hsl(260, 70%, 60%)"
+            strokeWidth={2.5}
             dot={false}
-            activeDot={{ r: 8 }}
+            activeDot={{ 
+              r: 6, 
+              stroke: 'hsl(var(--card))',
+              strokeWidth: 2,
+              fill: 'hsl(260, 70%, 60%)'
+            }}
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
           <Line
             type="monotone"
             dataKey="benchmark"
             name="Benchmark" // Benchmark line will be empty if no benchmark data is provided
             display={filteredData.some(d => d.benchmark !== undefined) ? 'inline' : 'none'}
-            stroke="#10b981"
-            strokeWidth={2}
+            stroke="hsl(217, 91%, 60%)"
+            strokeWidth={2.5}
             dot={false}
-            strokeDasharray="5 5"
+            strokeDasharray="4 4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            activeDot={{ 
+              r: 6, 
+              stroke: 'hsl(var(--card))',
+              strokeWidth: 2,
+              fill: 'hsl(217, 91%, 60%)'
+            }}
           />
         </LineChart>
       </ResponsiveContainer>

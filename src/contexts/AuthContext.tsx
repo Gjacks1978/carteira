@@ -129,7 +129,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       toast({
         title: "Conta criada com sucesso!",
-        description: "Bem-vindo à Carteira Lovable",
+        description: "Bem-vindo ao MyPortfolio",
       });
     } catch (error) {
       console.error("Error signing up:", error);

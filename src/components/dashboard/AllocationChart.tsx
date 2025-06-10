@@ -1,7 +1,14 @@
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
-const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#6366f1", "#ec4899", "#8b5cf6"];
+const COLORS = [
+  "hsl(260, 70%, 60%)", // Roxo vibrante
+  "hsl(217, 91%, 60%)", // Azul
+  "hsl(142, 76%, 36%)", // Verde
+  "hsl(37, 100%, 50%)", // Amarelo
+  "hsl(0, 84%, 60%)",  // Vermelho
+  "hsl(276, 70%, 50%)"  // Roxo mais escuro
+];
 
 interface AllocationChartProps {
   data?: Array<{name: string, value: number}>;
@@ -37,6 +44,23 @@ const AllocationChart = ({ data }: AllocationChartProps) => {
             ))}
           </Pie>
           <Tooltip
+            contentStyle={{
+              backgroundColor: 'hsl(var(--card))',
+              border: '1px solid hsl(var(--border))',
+              borderRadius: '8px',
+              padding: '8px 12px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+            }}
+            itemStyle={{ 
+              color: 'hsl(var(--foreground))',
+              fontSize: '0.875rem',
+              fontWeight: 500
+            }}
+            labelStyle={{ 
+              color: 'hsl(var(--foreground))',
+              fontWeight: 600,
+              marginBottom: '4px'
+            }}
             formatter={(value) => 
               data && data.length > 0
                 ? `${Number(value).toLocaleString("pt-BR", {
@@ -46,7 +70,25 @@ const AllocationChart = ({ data }: AllocationChartProps) => {
                 : "Sem dados"
             }
           />
-          {data && data.length > 0 && <Legend />}
+          {data && data.length > 0 && (
+            <Legend 
+              wrapperStyle={{
+              color: 'hsl(var(--muted-foreground))',
+              fontSize: '0.75rem',
+              paddingTop: '10px',
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+              gap: '8px',
+              marginTop: '8px'
+            }}
+            formatter={(value, entry: any, index) => {
+              // Adiciona o valor percentual ao lado do nome da legenda
+              const percent = (entry.payload.payload.percent * 100).toFixed(1);
+              return `${entry.payload.name} (${percent}%)`;
+            }}
+            />
+          )}
         </PieChart>
       </ResponsiveContainer>
     </div>

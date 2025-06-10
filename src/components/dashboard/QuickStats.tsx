@@ -14,7 +14,7 @@ import {
 const QuickStats = () => {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <Card>
+      <Card className="bg-card/80 backdrop-blur-sm">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">
             Maior Rentabilidade
@@ -48,7 +48,7 @@ const QuickStats = () => {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-card/80 backdrop-blur-sm">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">
             Próximos Vencimentos
@@ -70,7 +70,7 @@ const QuickStats = () => {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-card/80 backdrop-blur-sm">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">
             Melhor Setor
