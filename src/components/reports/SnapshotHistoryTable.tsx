@@ -132,14 +132,7 @@ const SnapshotHistoryTable: React.FC<SnapshotHistoryTableProps> = ({ snapshotGro
                 </TableCell>
               </TableRow>
               {expandedRows[group.id] && (
-                <TableRow>
-                  {/* Célula vazia para alinhar com o botão de expandir */}
-                  <TableCell /> 
-                  {/* Sub-tabela ocupando o restante das colunas */}
-                  <TableCell colSpan={3}> {/* Ajustar colSpan conforme o número de colunas na tabela principal - 1 */}
-                    <SnapshotItemsTable items={group.snapshot_items} />
-                  </TableCell>
-                </TableRow>
+                <TableRow><TableCell /><TableCell colSpan={3}><SnapshotItemsTable items={group.snapshot_items} /></TableCell></TableRow>
               )}
             </React.Fragment>
           ))}

@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   TrendingUp,
@@ -22,10 +22,24 @@ import {
 import AllocationChart from "./AllocationChart";
 import PerformanceChart from "./PerformanceChart";
 import QuickStats from "./QuickStats";
+import AllocationBreakdownList from './AllocationBreakdownList';
+import PatrimonioTotalChart from '@/components/reports/PatrimonioTotalChart';
+import AssetEvolutionStackedBarChart from '@/components/reports/AssetEvolutionStackedBarChart';
+import { SnapshotGroupWithTotal } from '@/types/reports';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 import { fetchUSDtoBRLRate, FALLBACK_USD_TO_BRL_RATE } from "@/lib/utils";
+
+// Helper function to safely parse numeric values
+const parseNumericValue = (value: any): number => {
+  if (typeof value === 'number' && isFinite(value)) {
+    return value;
+  }
+  // Add more sophisticated parsing here if values can be strings like "1,234.56"
+  // For now, only accept actual numbers or default to 0.
+  return 0;
+};
 
 const InvestmentDashboard = () => {
   const [period, setPeriod] = useState<"1m" | "3m" | "6m" | "1y" | "all">("1y");
@@ -38,8 +52,22 @@ const InvestmentDashboard = () => {
     assetsCount: 0,
     cryptoCount: 0,
   });
+  const [snapshotGroupsData, setSnapshotGroupsData] = useState<SnapshotGroupWithTotal[]>([]);
+  const [isSnapshotLoading, setIsSnapshotLoading] = useState(true);
+  const [snapshotFetchError, setSnapshotFetchError] = useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
+
+  const portfolioPerformanceData = React.useMemo(() => {
+    if (!snapshotGroupsData || snapshotGroupsData.length === 0) return [];
+    return [...snapshotGroupsData]
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) // Sort ascending for chart
+      .map(group => ({
+        date: group.created_at,
+        portfolio: group.totalPatrimonioGrupo,
+        // benchmark: undefined, // Add benchmark data here if available in the future
+      }));
+  }, [snapshotGroupsData]);
   
   const currentDate = new Date().toLocaleDateString("pt-BR", {
     day: "2-digit",
@@ -47,114 +75,188 @@ const InvestmentDashboard = () => {
     year: "numeric",
   });
 
-  useEffect(() => {
+useEffect(() => {
     fetchDashboardData();
+    fetchSnapshotDataForDashboard(); // Call the new function
   }, [user]);
 
-  const fetchDashboardData = async () => {
-    if (!user) return;
+  const fetchSnapshotDataForDashboard = async () => {
+    if (!user) {
+      setIsSnapshotLoading(false);
+      setSnapshotGroupsData([]);
+      return;
+    }
+
+    setIsSnapshotLoading(true);
+    setSnapshotFetchError(null);
 
     try {
-      setLoading(true);
+      const { data: groupsData, error: groupsError } = await supabase
+        .from('snapshot_groups')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
-      // Buscar cotação do dólar PRIMEIRO
-      const { rate: dollarRate, isReal: isDollarRateReal } = await fetchUSDtoBRLRate();
+      if (groupsError) throw groupsError;
+      if (!groupsData) {
+        setSnapshotGroupsData([]);
+        setIsSnapshotLoading(false);
+        return;
+      }
 
-      // Fetch assets data
-      const { data: assetsData, error: assetsError } = await supabase
+      const groupsWithTotals: SnapshotGroupWithTotal[] = await Promise.all(
+        groupsData.map(async (group) => {
+          const { data: items, error: itemsError } = await supabase
+            .from('snapshot_items')
+            .select('id, asset_id, asset_name, asset_category_name, total_value_brl, is_crypto_total')
+            .eq('snapshot_group_id', group.id);
+
+          if (itemsError) {
+            console.error(`[Dashboard] Error fetching items for group ${group.id}:`, itemsError);
+            // Return group with 0 total and empty items if items fetch fails, to avoid breaking Promise.all
+            return { ...group, totalPatrimonioGrupo: 0, snapshot_items: [] }; 
+          }
+
+          const totalPatrimonioGrupo = items?.reduce((sum, item) => sum + (item.total_value_brl || 0), 0) || 0;
+          // Ensure snapshot_items is always an array, even if items is null/undefined
+          return { ...group, totalPatrimonioGrupo, snapshot_items: items || [] }; 
+        })
+      );
+      setSnapshotGroupsData(groupsWithTotals);
+    } catch (err) {
+      console.error('Erro ao buscar dados de snapshots para o Dashboard:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Ocorreu um erro desconhecido ao buscar snapshots.';
+      setSnapshotFetchError(errorMessage);
+      toast({
+        title: "Erro ao carregar histórico de patrimônio",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSnapshotLoading(false);
+    }
+  };
+
+  const fetchDashboardData = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+
+    try {
+      // 1. Fetch Asset Categories first
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('asset_categories')
+        .select('id, name');
+
+      if (categoriesError) throw categoriesError;
+      const categoryMap = new Map<string, string>();
+      (categoriesData || []).forEach(cat => categoryMap.set(cat.id, cat.name));
+
+      // 2. Fetch current asset data (without direct join for category name)
+      const { data: assets, error: assetsError } = await supabase
         .from("assets")
-        .select(`
-          *,
-          asset_categories!inner(name)
-        `)
+        .select("*, category_id, current_total_value_brl") // Select category_id
+        .eq("user_id", user.id);
+
+      // 3. Fetch current crypto data
+      const { data: cryptos, error: cryptosError } = await supabase
+        .from("crypto_assets")
+        .select("*, sectors(name), total_brl") // Corrected column name for crypto value in BRL
         .eq("user_id", user.id);
 
       if (assetsError) throw assetsError;
+      if (cryptosError) throw cryptosError;
 
-      // Fetch crypto assets data
-      const { data: cryptoData, error: cryptoError } = await supabase
-        .from("crypto_assets")
-        .select(`
-          *,
-          sectors(name),
-          custodies(name)
-        `)
-        .eq("user_id", user.id);
+      const assetsData = assets || [];
+      const cryptoData = cryptos || [];
 
-      if (cryptoError) throw cryptoError;
-
-      // Calculate assets totals
-      const assetsTotal = (assetsData as any)?.reduce((sum: number, asset: any) => sum + Number(asset.current_total_value_brl ?? 0), 0) || 0;
-      const assetsReturn = assetsData?.reduce((sum, asset) => sum + Number(asset.return_value || 0), 0) || 0;
+      // Calculate current total value of assets
+      const currentTotalAssetsValue = assetsData.reduce((sum, asset) => sum + parseNumericValue(asset.current_total_value_brl), 0);
+      // Calculate current total value of cryptos
+      const currentTotalCryptoValue = cryptoData.reduce((sum, crypto) => sum + parseNumericValue(crypto.total_brl), 0);
       
-      // Calculate crypto totals USANDO A COTAÇÃO ATUAL
-      const cryptoTotalBRL = cryptoData?.reduce((sum, crypto) => {
-        const totalUsd = Number(crypto.total_usd || (crypto.price_usd * crypto.quantity) || 0); 
-        return sum + (totalUsd * dollarRate);
-      }, 0) || 0;
-      
-      // Calculate crypto return USANDO A COTAÇÃO ATUAL
-      const cryptoReturn = cryptoData?.reduce((sum, crypto) => {
-        const totalUsdForReturn = Number(crypto.total_usd || (crypto.price_usd * crypto.quantity) || 0);
-        const changePerc = Number(crypto.change_percentage || 0);
-        const returnInUsd = totalUsdForReturn * (changePerc / 100);
-        return sum + (returnInUsd * dollarRate); // Converte o lucro/prejuízo em USD para BRL
-      }, 0) || 0;
-      
-      const totalInvested = assetsTotal + cryptoTotalBRL;
-      const totalReturn = assetsReturn + cryptoReturn; 
-      const returnPercentage = totalInvested > 0 ? (totalReturn / totalInvested) * 100 : 0;
+      // Total invested considers both assets and cryptos
+      let totalInvestedDisplay = currentTotalAssetsValue + currentTotalCryptoValue;
 
-      // Calculate portfolio allocation by category/sector
-      const portfolioAllocation = [];
-      
-      const assetsByCategory = (assetsData as any)?.reduce((acc: Record<string, number>, asset: any) => {
-        const categoryName = asset.asset_categories?.name || "Outros";
-        acc[categoryName] = (acc[categoryName] || 0) + Number(asset.current_total_value_brl ?? 0);
-        return acc;
-      }, {} as Record<string, number>) || {};
+      let firstSnapshotTotalValue = 0;
+      let totalReturnForDashboard = 0;
+      let returnPercentageForDashboard = 0;
 
-      const cryptoBySector = cryptoData?.reduce((acc, crypto) => {
-        const sectorName = crypto.sectors?.name || "Criptomoedas";
-        const totalUsd = Number(crypto.total_usd || (crypto.price_usd * crypto.quantity) || 0);
-        const currentTotalBrlForSector = totalUsd * dollarRate;
-        acc[sectorName] = (acc[sectorName] || 0) + currentTotalBrlForSector;
-        return acc;
-      }, {} as Record<string, number>) || {};
+      // Fetch First Snapshot Group to use as a baseline for returns
+      const { data: firstSnapshotGroupData, error: firstSnapshotGroupError } = await supabase
+        .from('snapshot_groups')
+        .select('id, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .single();
 
-      Object.entries(assetsByCategory).forEach(([category, value]) => {
-        if (Number(value) > 0) {
-          portfolioAllocation.push({
-            name: category,
-            value: value
-          });
+      if (firstSnapshotGroupError && firstSnapshotGroupError.code !== 'PGRST116') { // PGRST116: Query returned 0 rows
+        throw firstSnapshotGroupError;
+      }
+
+      if (firstSnapshotGroupData) {
+        const { data: firstSnapshotItems, error: firstSnapshotItemsError } = await supabase
+          .from('snapshot_items')
+          .select('total_value_brl')
+          .eq('snapshot_group_id', firstSnapshotGroupData.id);
+
+        if (firstSnapshotItemsError) throw firstSnapshotItemsError;
+
+        firstSnapshotTotalValue = (firstSnapshotItems || []).reduce(
+          (sum, item) => sum + parseNumericValue(item.total_value_brl),
+          0
+        );
+
+        totalReturnForDashboard = totalInvestedDisplay - firstSnapshotTotalValue;
+        if (firstSnapshotTotalValue > 0) {
+          returnPercentageForDashboard = (totalReturnForDashboard / firstSnapshotTotalValue) * 100;
+        } else {
+          returnPercentageForDashboard = 0;
         }
+      } else {
+        totalReturnForDashboard = 0; 
+        returnPercentageForDashboard = 0;
+        toast({
+          title: "Primeiro snapshot não encontrado",
+          description: "O 'Retorno Total' e '% Retorno' são calculados com base no seu primeiro snapshot. Cadastre um para métricas mais precisas.",
+          variant: "default",
+        });
+      }
+
+      // Portfolio Allocation (based on current values, using the categoryMap)
+      const allocationMap = new Map<string, number>();
+      assetsData.forEach(asset => {
+        const categoryName = categoryMap.get(asset.category_id) || 'Outros (Ativos)';
+        const value = parseNumericValue(asset.current_total_value_brl);
+        allocationMap.set(categoryName, (allocationMap.get(categoryName) || 0) + value);
       });
 
-      Object.entries(cryptoBySector).forEach(([sector, value]) => {
-        if (value > 0) {
-          portfolioAllocation.push({
-            name: sector,
-            value: value
-          });
-        }
-      });
+      if (currentTotalCryptoValue > 0) {
+        allocationMap.set('Criptomoedas', currentTotalCryptoValue);
+      }
+
+      const portfolioAllocation = Array.from(allocationMap)
+        .map(([name, value]) => ({ name, value }))
+        .filter(item => item.value > 0); // Filter out zero-value categories
 
       setDashboardData({
-        totalInvested,
-        totalReturn,
-        returnPercentage,
-        portfolioAllocation,
-        assetsCount: assetsData?.length || 0,
-        cryptoCount: cryptoData?.length || 0,
+        totalInvested: totalInvestedDisplay,
+        totalReturn: totalReturnForDashboard,
+        returnPercentage: returnPercentageForDashboard,
+        portfolioAllocation: portfolioAllocation,
+        assetsCount: assetsData.length,
+        cryptoCount: cryptoData.length,
       });
 
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       toast({
-        variant: "destructive",
         title: "Erro ao carregar dados",
-        description: "Não foi possível carregar os dados do dashboard."
+        description: "Não foi possível buscar os dados do dashboard. Tente novamente.",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -283,6 +385,29 @@ const InvestmentDashboard = () => {
         </Card>
       </div>
 
+      {/* Patrimônio Charts Section */}
+      <Card className="my-6">
+        <CardHeader>
+          <CardTitle>Patrimônio ao Longo do Tempo</CardTitle>
+          <CardDescription>
+            Acompanhe a evolução total do seu patrimônio e a composição dele por ativo através dos snapshots registrados.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <PatrimonioTotalChart 
+            snapshotGroupsData={snapshotGroupsData} 
+            isLoading={isSnapshotLoading} 
+          />
+          <AssetEvolutionStackedBarChart 
+            snapshotGroupsData={snapshotGroupsData} 
+            isLoading={isSnapshotLoading} 
+          />
+          {snapshotFetchError && (
+            <p className="text-sm text-red-500 text-center">Erro ao carregar dados do patrimônio: {snapshotFetchError}</p>
+          )}
+        </CardContent>
+      </Card>
+
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
@@ -297,7 +422,7 @@ const InvestmentDashboard = () => {
                 <CardTitle>Performance dos Investimentos</CardTitle>
               </CardHeader>
               <CardContent className="pl-2">
-                <PerformanceChart period={period} />
+                <PerformanceChart period={period} portfolioHistoryData={portfolioPerformanceData} isLoading={isSnapshotLoading} />
               </CardContent>
             </Card>
             
@@ -305,8 +430,14 @@ const InvestmentDashboard = () => {
               <CardHeader>
                 <CardTitle>Alocação por Classe</CardTitle>
               </CardHeader>
-              <CardContent className="flex justify-center">
-                <AllocationChart data={dashboardData.portfolioAllocation} />
+              <CardContent className="space-y-4">
+                <div className="flex justify-center">
+                  <AllocationChart data={dashboardData.portfolioAllocation} />
+                </div>
+                <AllocationBreakdownList 
+                  data={dashboardData.portfolioAllocation} 
+                  totalValue={dashboardData.totalInvested}
+                />
               </CardContent>
             </Card>
           </div>
@@ -369,7 +500,7 @@ const InvestmentDashboard = () => {
           
           <Card>
             <CardContent className="pt-6">
-              <PerformanceChart period={period} />
+              <PerformanceChart period={period} portfolioHistoryData={portfolioPerformanceData} isLoading={isSnapshotLoading} />
             </CardContent>
           </Card>
         </TabsContent>
