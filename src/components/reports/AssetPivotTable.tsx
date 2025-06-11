@@ -23,6 +23,24 @@ const formatDate = (dateString: string) => {
   });
 };
 
+const PerformanceCell: React.FC<{ value: number | null; previousValue: number | null }> = ({ value, previousValue }) => {
+  let textColorClass = ''; // Default color
+
+  if (value !== null && previousValue !== null) {
+    if (value > previousValue) {
+      textColorClass = 'text-green-600 dark:text-green-500';
+    } else if (value < previousValue) {
+      textColorClass = 'text-red-600 dark:text-red-500';
+    }
+  }
+
+  return (
+    <span className={textColorClass}>
+      {formatCurrency(value)}
+    </span>
+  );
+};
+
 interface AssetEvolutionRow {
   uniqueKey: string;
   assetName: string;
@@ -125,12 +143,14 @@ const AssetPivotTable: React.FC<AssetPivotTableProps> = ({ snapshotGroupsData, i
             </TableRow>
           </TableHeader>
           <TableBody>
-            {assetRows.map(row => (
-              <TableRow key={row.uniqueKey}>
-                <TableCell className="font-medium sticky left-0 bg-card z-10">{row.assetName}</TableCell>
+            {assetRows.map((row, rowIndex) => (
+              <TableRow key={row.uniqueKey} className={rowIndex % 2 === 0 ? 'bg-muted/25' : ''}>
+                <TableCell className={`font-medium sticky left-0 z-10 ${rowIndex % 2 === 0 ? 'bg-muted/25' : 'bg-card'}`}>{row.assetName}</TableCell>
                 <TableCell>{row.assetCategory || '-'}</TableCell>
-                {row.values.map((value, index) => (
-                  <TableCell key={`${row.uniqueKey}-val-${index}`} className="text-right">{formatCurrency(value)}</TableCell>
+                {row.values.map((value, valueIndex) => (
+                  <TableCell key={`${row.uniqueKey}-val-${valueIndex}`} className="text-right">
+                    <PerformanceCell value={value} previousValue={valueIndex > 0 ? row.values[valueIndex - 1] : null} />
+                  </TableCell>
                 ))}
               </TableRow>
             ))}
