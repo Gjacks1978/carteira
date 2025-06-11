@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { DateRange } from 'react-day-picker';
+import { subDays } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -12,8 +14,15 @@ import { supabase } from '@/lib/supabaseClient'; // Import Supabase client
 import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
 import { SnapshotGroupWithTotal, SnapshotItem } from '@/types/reports'; // Import type
 import { toast } from 'sonner';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { CSVLink } from 'react-csv';
+import { FileDown } from 'lucide-react'; // Import type
 
 const ReportsPage: React.FC = () => {
+  const [date, setDate] = useState<DateRange | undefined>({
+    from: subDays(new Date(), 90),
+    to: new Date(),
+  });
   const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -31,6 +40,55 @@ const ReportsPage: React.FC = () => {
     // A mensagem de sucesso para registro é boa.
     // Para exclusão, a mensagem já é dada em SnapshotHistoryTable, mas o refresh é centralizado aqui.
   };
+
+  const filteredData = useMemo(() => {
+    if (!date?.from) return snapshotGroupsData;
+    
+    const fromDate = date.from;
+    // Set the 'to' date to the end of the selected day
+    const toDate = date.to ? new Date(date.to.setHours(23, 59, 59, 999)) : new Date();
+
+    return snapshotGroupsData.filter(group => {
+      const groupDate = new Date(group.created_at);
+      return groupDate >= fromDate && groupDate <= toDate;
+    });
+    }, [snapshotGroupsData, date]);
+
+  const { initial, final, pnl, pnlPercent } = useMemo(() => {
+    if (filteredData.length < 1) {
+      return { initial: 0, final: 0, pnl: 0, pnlPercent: 0 };
+    }
+
+    // Ensure data is sorted by date ascending to correctly identify initial and final values
+    const sortedData = [...filteredData].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+
+    const initialValue = sortedData[0]?.totalPatrimonioGrupo ?? 0;
+    const finalValue = sortedData[sortedData.length - 1]?.totalPatrimonioGrupo ?? 0;
+    const pnlValue = finalValue - initialValue;
+    const pnlPercentage = initialValue !== 0 ? (pnlValue / initialValue) * 100 : 0;
+
+    return { initial: initialValue, final: finalValue, pnl: pnlValue, pnlPercent: pnlPercentage };
+  }, [filteredData]);
+
+  const { csvData, csvHeaders } = useMemo(() => {
+    if (!filteredData) return { csvData: [], csvHeaders: [] };
+
+    const data = filteredData.map(group => ({
+      data: new Date(group.created_at).toLocaleString('pt-BR'),
+      notas: group.notes || '',
+      patrimonio_total: group.totalPatrimonioGrupo.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    }));
+
+    const headers = [
+      { label: "Data", key: "data" },
+      { label: "Notas", key: "notas" },
+      { label: "Patrimônio Total (R$)", key: "patrimonio_total" },
+    ];
+
+    return { csvData: data, csvHeaders: headers };
+  }, [filteredData]);
 
   useEffect(() => {
     const fetchSnapshotDataForPage = async () => {
@@ -89,11 +147,57 @@ const ReportsPage: React.FC = () => {
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold mb-6">Relatórios de Patrimônio</h1>
+                <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">Relatórios de Patrimônio</h1>
+          <DateRangePicker date={date} onDateChange={setDate} />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Patrimônio Inicial</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {initial.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Patrimônio Final</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {final.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Rentabilidade (R$)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {pnl.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Rentabilidade (%)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${pnlPercent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {pnlPercent.toFixed(2).replace('.', ',')}% 
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         <div className="grid grid-cols-1 gap-6 mb-8">
-          <PatrimonioTotalChart snapshotGroupsData={snapshotGroupsData} isLoading={pageIsLoading} />
-          <AssetEvolutionStackedBarChart snapshotGroupsData={snapshotGroupsData} isLoading={pageIsLoading} />
+          <PatrimonioTotalChart snapshotGroupsData={filteredData} isLoading={pageIsLoading} />
+          <AssetEvolutionStackedBarChart snapshotGroupsData={filteredData} isLoading={pageIsLoading} />
         </div>
 
         
@@ -108,9 +212,23 @@ const ReportsPage: React.FC = () => {
                 Visualize o histórico de seus snapshots por data ou analise a evolução de cada ativo ao longo do tempo.
               </CardDescription>
             </div>
-            <Button onClick={handleRegisterSnapshot} className="ml-4 whitespace-nowrap">
-              Registrar Saldos Atuais
-            </Button>
+                        <div className="flex items-center gap-2 ml-4">
+              <CSVLink
+                data={csvData}
+                headers={csvHeaders}
+                filename={`relatorio_patrimonio_${new Date().toISOString().split('T')[0]}.csv`}
+                className="no-underline"
+                target="_blank"
+              >
+                <Button variant="outline" className="whitespace-nowrap">
+                  <FileDown className="mr-2 h-4 w-4" />
+                  Exportar CSV
+                </Button>
+              </CSVLink>
+              <Button onClick={handleRegisterSnapshot} className="whitespace-nowrap">
+                Registrar Saldos Atuais
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="px-0 sm:px-6"> {/* Remover padding horizontal padrão do CardContent se as Tabs o gerenciarem */}
             <Tabs defaultValue="history" className="w-full">
@@ -127,7 +245,7 @@ const ReportsPage: React.FC = () => {
                 />
               </TabsContent>
               <TabsContent value="asset_evolution" className="mt-4">
-                <AssetPivotTable snapshotGroupsData={snapshotGroupsData} isLoading={pageIsLoading} fetchError={pageFetchError} />
+                <AssetPivotTable snapshotGroupsData={filteredData} isLoading={pageIsLoading} fetchError={pageFetchError} />
               </TabsContent>
             </Tabs>
           </CardContent>
