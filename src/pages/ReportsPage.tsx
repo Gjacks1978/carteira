@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AssetPivotTable from '@/components/reports/AssetPivotTable';
 import PatrimonioTotalChart from '@/components/reports/PatrimonioTotalChart';
 import AssetEvolutionStackedBarChart from '@/components/reports/AssetEvolutionStackedBarChart';
+import CategoryEvolutionStackedBarChart from '@/components/reports/CategoryEvolutionStackedBarChart';
 import AllocationChart from '@/components/dashboard/AllocationChart';
 import AllocationBreakdownList from '@/components/dashboard/AllocationBreakdownList';
 import { getCategoryColorMap } from '@/lib/chart-colors';
@@ -285,6 +286,20 @@ const ReportsPage: React.FC = () => {
             </CardHeader>
             <CardContent className="pt-6">
               <AssetEvolutionStackedBarChart 
+                snapshotGroupsData={filteredData} 
+                isLoading={pageIsLoading} 
+              />
+            </CardContent>
+          </Card>
+
+          {/* Bloco 4: Composição do Patrimônio por Classe */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Composição do Patrimônio por Classe</CardTitle>
+              <CardDescription>Distribuição do valor da carteira entre as classes de ativo ao longo do tempo.</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <CategoryEvolutionStackedBarChart 
                 snapshotGroupsData={filteredData} 
                 isLoading={pageIsLoading} 
               />
