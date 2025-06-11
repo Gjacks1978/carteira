@@ -393,17 +393,19 @@ useEffect(() => {
             Acompanhe a evolução total do seu patrimônio e a composição dele por ativo através dos snapshots registrados.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <PatrimonioTotalChart 
-            snapshotGroupsData={snapshotGroupsData} 
-            isLoading={isSnapshotLoading} 
-          />
-          <AssetEvolutionStackedBarChart 
-            snapshotGroupsData={snapshotGroupsData} 
-            isLoading={isSnapshotLoading} 
-          />
+        <CardContent>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <PatrimonioTotalChart 
+              snapshotGroupsData={snapshotGroupsData} 
+              isLoading={isSnapshotLoading} 
+            />
+            <AssetEvolutionStackedBarChart 
+              snapshotGroupsData={snapshotGroupsData} 
+              isLoading={isSnapshotLoading} 
+            />
+          </div>
           {snapshotFetchError && (
-            <p className="text-sm text-red-500 text-center">Erro ao carregar dados do patrimônio: {snapshotFetchError}</p>
+            <p className="text-sm text-red-500 text-center mt-4">Erro ao carregar dados do patrimônio: {snapshotFetchError}</p>
           )}
         </CardContent>
       </Card>

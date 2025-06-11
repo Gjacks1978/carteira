@@ -2,64 +2,124 @@
 
 ## 📌 Visão Geral
 
-O **Carteira** é uma aplicação web para gerenciamento de ativos financeiros, com foco especial em criptomoedas. A aplicação permite que os usuários acompanhem seus investimentos, visualizem a distribuição de ativos e monitorem o mercado em tempo real.
+O **Carteira** é uma aplicação web para gerenciamento de ativos financeiros, com foco especial em criptomoedas. A aplicação permite que os usuários acompanhem seus investimentos, visualizem a distribuição de ativos e monitorem o mercado em tempo real. O projeto utiliza uma stack moderna com React, TypeScript, Vite e Supabase para oferecer uma experiência rápida, segura e escalável.
 
 ## 🚀 Tecnologias Principais
 
 - **Frontend**: React 18 + TypeScript
-- **Estilização**: Tailwind CSS com tema personalizado
-- **Roteamento**: React Router DOM
-- **Gerenciamento de Estado**: React Hooks + Context API
+- **Build Tool**: Vite
+- **Estilização**: Tailwind CSS
 - **Componentes UI**: shadcn/ui (baseado em Radix UI)
-- **Requisições HTTP**: fetch API nativa
-- **Formatação de Dados**: Intl API
+- **Backend & Banco de Dados**: Supabase (Auth, Postgres, Edge Functions)
+- **Gerenciamento de Estado**: React Hooks + Context API
+- **Roteamento**: React Router DOM
+- **Requisições HTTP**: `fetch` API nativa
+- **Formatação de Dados**: `Intl` API
 - **Ícones**: Lucide Icons
-- **Gerenciamento de Temas**: next-themes
+- **Gerenciamento de Temas**: `next-themes`
+
+## ✨ Funcionalidades Implementadas
+
+- **Autenticação de Usuários**: Sistema completo de login e registro utilizando o Supabase Auth.
+- **Gerenciamento de Ativos**: CRUD completo para ativos financeiros, permitindo ao usuário adicionar, visualizar, editar e remover itens de seu portfólio.
+- **Categorização de Ativos**: Os usuários podem criar, editar e excluir suas próprias categorias de ativos, além de utilizar categorias padrão.
+- **Dashboard de Resumo**: Apresenta cartões com métricas chave do portfólio, como valor total investido, lucro/prejuízo e alocação por categoria.
+- **Sistema de Snapshots**: Funcionalidade que permite ao usuário "fotografar" o estado atual do seu portfólio. Esses snapshots são armazenados e podem ser usados futuramente para análises de desempenho histórico.
+- **Cotação de Moedas**: Integração com a AwesomeAPI para buscar a cotação do Dólar (USD) para Real (BRL) em tempo real, usada para cálculos de conversão.
+- **Tema Claro e Escuro**: Interface adaptável com temas claro e escuro para melhor experiência do usuário.
 
 ## 🏗️ Estrutura do Projeto
 
 ```
 src/
 ├── components/              # Componentes reutilizáveis
-│   ├── assets/             # Componentes relacionados a ativos
-│   ├── crypto/             # Componentes específicos de criptomoedas
-│   ├── dashboard/          # Componentes do painel principal
+│   ├── assets/             # Componentes da página de Ativos (tabela, cards, modal)
+│   ├── common/             # Componentes genéricos (botões, inputs)
 │   └── layout/             # Componentes de layout (Sidebar, Header, etc.)
 │
-├── lib/                    # Utilitários e configurações
-│   └── utils.ts            # Funções utilitárias
+├── context/                 # Contextos React (AuthProvider, etc.)
 │
-├── pages/                 # Páginas da aplicação
-│   ├── AssetsPage.tsx      # Página de ativos
-│   ├── CryptoPage.tsx      # Página de criptomoedas
-│   └── Index.tsx           # Página inicial
+├── hooks/                   # Hooks customizados (useAuth, useToast)
 │
-├── types/                 # Tipos TypeScript
-│   └── assets.ts           # Tipos relacionados a ativos
+├── integrations/            # Integrações com serviços externos
+│   └── supabase/           # Configuração do cliente e tipos do Supabase
 │
-├── App.tsx               # Componente raiz
-├── index.css              # Estilos globais
-└── main.tsx              # Ponto de entrada da aplicação
+├── lib/                     # Funções utilitárias
+│   └── utils.ts            # Funções auxiliares (formatação, cálculos)
+│
+├── pages/                   # Páginas da aplicação
+│   ├── AssetsPage.tsx      # Página de gerenciamento de ativos
+│   ├── AuthPage.tsx        # Página de login/registro
+│   └── ...
+│
+├── services/                # Lógica de negócio e comunicação com APIs
+│
+├── types/                   # Definições de tipos TypeScript
+│
+├── App.tsx                  # Componente raiz com roteamento
+├── index.css                # Estilos globais e variáveis do Tailwind
+└── main.tsx                 # Ponto de entrada da aplicação
 ```
 
-## 🎨 Sistema de Temas
+## 🔄 Integração com Supabase
 
-A aplicação possui suporte a temas claro e escuro, implementado com `next-themes`. O tema pode ser alterado através do `ThemeToggle` localizado na barra lateral.
+O Supabase é o coração do backend, provendo autenticação, banco de dados e funções serverless.
 
-### Cores do Tema
+### Tabelas Principais
 
-- **Tema Claro**: Cores claras com destaque em azul
-- **Tema Escuro**: Cores escuras com destaque em roxo
+1.  **`asset_categories`**: Armazena as categorias dos ativos.
+    - `id`: UUID (Chave primária)
+    - `name`: TEXT (Nome da categoria, ex: "Ações", "Criptomoedas")
+    - `user_id`: UUID (FK para `auth.users`)
+    - `is_default`: BOOLEAN (Indica se é uma categoria padrão)
 
-## 🔄 Integrações
+2.  **`assets`**: Armazena os ativos individuais do usuário.
+    - `id`: UUID (Chave primária)
+    - `name`: TEXT (Nome do ativo, ex: "Bitcoin")
+    - `ticker`: TEXT (Símbolo do ativo, ex: "BTC")
+    - `quantity`: NUMERIC (Quantidade do ativo)
+    - `average_price`: NUMERIC (Preço médio de compra)
+    - `current_total_value_brl`: NUMERIC (Valor total atual em BRL)
+    - `category_id`: UUID (FK para `asset_categories`)
+    - `user_id`: UUID (FK para `auth.users`)
 
-### AwesomeAPI
+3.  **`snapshot_groups`**: Agrupa os itens de um snapshot.
+    - `id`: UUID (Chave primária)
+    - `created_at`: TIMESTAMPTZ
+    - `notes`: TEXT (Anotações do usuário)
+    - `user_id`: UUID (FK para `auth.users`)
 
-A aplicação se integra à AwesomeAPI para obter a cotação do dólar em tempo real. A função `fetchUSDtoBRLRate()` em `src/lib/utils.ts` é responsável por essa integração.
+4.  **`snapshot_items`**: Armazena os detalhes de cada ativo no momento do snapshot.
+    - `id`: UUID (Chave primária)
+    - `group_id`: UUID (FK para `snapshot_groups`)
+    - `asset_id`: UUID (FK para `assets`)
+    - `ticker`: TEXT
+    - `quantity`: NUMERIC
+    - `unit_price_brl`: NUMERIC
+    - `total_value_brl`: NUMERIC
 
-### Supabase (Configurado, mas não implementado)
+### Row Level Security (RLS)
 
-O projeto possui configuração para Supabase, mas a implementação completa ainda não foi finalizada.
+Políticas de RLS são intensivamente utilizadas para garantir que os usuários só possam acessar e modificar seus próprios dados. Todas as queries do frontend são feitas sob o escopo do `user_id` do usuário autenticado.
+
+## 🧠 Desafios Encontrados e Soluções
+
+Durante o desenvolvimento, alguns desafios técnicos importantes foram superados:
+
+1.  **Problema de Exclusão Silenciosa (RLS)**:
+    - **Sintoma**: Ao tentar excluir uma categoria de ativo, a UI atualizava como se a operação tivesse sucesso, mas a categoria reaparecia após recarregar a página.
+    - **Causa Raiz**: A política de RLS para a operação `DELETE` na tabela `asset_categories` estava impedindo a exclusão de registros que não pertenciam diretamente ao usuário (como categorias padrão com `user_id` nulo).
+    - **Solução**: A política de RLS foi ajustada para permitir que usuários excluam categorias que eles criaram, tratando as categorias padrão de forma separada.
+
+2.  **Leitura de Dados Incorreta (RLS)**:
+    - **Sintoma**: Valores numéricos (como `total_value_brl` nos snapshots) eram salvos corretamente no banco, mas lidos como `0` ou `null` no frontend.
+    - **Causa Raiz**: A política de RLS para a operação `SELECT` na tabela `snapshot_items` não permitia que o usuário lesse corretamente todas as colunas que ele mesmo havia inserido.
+    - **Solução**: A política de `SELECT` foi revisada e corrigida para garantir que o usuário autenticado tivesse permissão de leitura para todos os campos relevantes da linha.
+
+3.  **Inconsistência de Nomenclatura de Campos**:
+    - **Sintoma**: O valor total de um ativo aparecia como `NaN` ou zerado na UI e não era salvo corretamente no banco.
+    - **Causa Raiz**: Havia uma divergência entre o nome do campo no estado do frontend (ex: `total`) e o nome da coluna na tabela `assets` do Supabase (`current_total_value_brl`).
+    - **Solução**: O código do frontend foi refatorado para usar consistentemente o nome da coluna do banco de dados (`current_total_value_brl`), garantindo o mapeamento correto dos dados entre o cliente e o servidor.
 
 ## 🛠️ Configuração do Ambiente
 
@@ -70,77 +130,37 @@ O projeto possui configuração para Supabase, mas a implementação completa ai
 
 ### Instalação
 
-1. Clone o repositório:
-   ```bash
-   git clone <url-do-repositório>
-   cd carteira
-   ```
+1.  Clone o repositório:
+    ```bash
+    git clone https://github.com/Gjacks1978/invest-control-flow.git
+    cd invest-control-flow
+    ```
 
-2. Instale as dependências:
-   ```bash
-   npm install
-   # ou
-   pnpm install
-   ```
+2.  Instale as dependências:
+    ```bash
+    npm install
+    ```
 
-3. Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis (se necessário):
-   ```
-   VITE_SUPABASE_URL=your-supabase-url
-   VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
-   ```
+3.  Crie um arquivo `.env` na raiz do projeto a partir do `.env.example` e adicione suas credenciais do Supabase:
+    ```
+    VITE_SUPABASE_URL=your-supabase-url
+    VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+    ```
 
-4. Inicie o servidor de desenvolvimento:
-   ```bash
-   npm run dev
-   ```
+4.  Inicie o servidor de desenvolvimento:
+    ```bash
+    npm run dev
+    ```
 
-5. Acesse a aplicação em [http://localhost:8080](http://localhost:8080)
-
-## 📦 Scripts Disponíveis
-
-- `dev`: Inicia o servidor de desenvolvimento
-- `build`: Constrói a aplicação para produção
-- `preview`: Previsualiza a build de produção localmente
-- `lint`: Executa o linter no código
-- `format`: Formata o código usando Prettier
-
-## 📝 Estrutura de Componentes Principais
-
-### Sidebar
-
-A barra lateral contém a navegação principal e o seletor de temas. Ela é responsiva e se adapta a diferentes tamanhos de tela.
-
-### ThemeToggle
-
-Componente responsável por alternar entre os temas claro e escuro. Utiliza o hook `useTheme` do `next-themes`.
-
-### AssetsSummaryCards
-
-Exibe um resumo dos ativos do usuário, incluindo valor total, ganhos/perdas e alocação por setor.
-
-## 🔄 Gerenciamento de Estado
-
-A aplicação utiliza uma combinação de estado local (useState) e contexto (createContext) para gerenciar o estado global. O estado relacionado ao tema é gerenciado pelo `ThemeProvider` do `next-themes`.
-
-## 🧪 Testes
-
-Atualmente, o projeto não possui testes automatizados configurados. Recomenda-se a implementação de testes unitários com Jest e testes de integração com React Testing Library.
-
-## 🚀 Implantação
-
-A aplicação pode ser implantada em qualquer serviço de hospedagem estática, como Vercel, Netlify ou GitHub Pages. O projeto inclui configurações prontas para Vite.
+5.  Acesse a aplicação em `http://localhost:5173` (ou a porta informada no terminal).
 
 ## 📅 Próximos Passos
 
-- [ ] Implementar autenticação com Supabase
-- [ ] Adicionar persistência de dados
-- [ ] Implementar testes automatizados
-- [ ] Adicionar mais indicadores financeiros
-- [ ] Criar um dashboard mais detalhado
-
-## 🤝 Contribuição
-
-Contribuições são bem-vindas! Sinta-se à vontade para abrir issues e enviar pull requests.
+- [ ] **Página de Relatórios**: Desenvolver a página de relatórios para visualizar e comparar os snapshots do portfólio.
+- [ ] **Gráficos e Visualizações**: Adicionar gráficos (ex: pizza para alocação, linha para evolução do patrimônio) para uma análise mais visual.
+- [ ] **Testes Automatizados**: Implementar testes unitários e de integração para garantir a qualidade e estabilidade do código.
+- [ ] **Supabase Edge Functions**: Utilizar Edge Functions para lógicas de negócio mais complexas, como a geração de relatórios ou notificações.
+- [ ] **Melhorias de UX/UI**: Refinar a experiência do usuário com base em feedback e adicionar micro-interações.
 
 ## 📄 Licença
 
