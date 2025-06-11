@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronRight, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Trash2, Copy } from "lucide-react";
 import SnapshotItemsTable from './SnapshotItemsTable';
 import { SnapshotItem, SnapshotGroup, SnapshotGroupWithTotal } from '@/types/reports';
 import {
@@ -50,6 +50,58 @@ const SnapshotHistoryTable: React.FC<SnapshotHistoryTableProps> = ({ snapshotGro
   const handleDeleteClick = (snapshot: SnapshotGroupWithTotal) => {
     setSnapshotToDelete(snapshot);
     setIsDeleteDialogOpen(true);
+  };
+
+    const handleDuplicateSnapshot = async (snapshotToDuplicate: SnapshotGroupWithTotal) => {
+    if (!snapshotToDuplicate || !user) return;
+
+    try {
+      // 1. Criar novo grupo de snapshot
+      const { data: newGroup, error: groupError } = await supabase
+        .from('snapshot_groups')
+        .insert({
+          user_id: user.id,
+          notes: `Cópia de: ${snapshotToDuplicate.notes || new Date(snapshotToDuplicate.created_at).toLocaleDateString('pt-BR')}`,
+        })
+        .select()
+        .single();
+
+      if (groupError) throw new Error(`Falha ao criar novo grupo: ${groupError.message}`);
+      if (!newGroup) throw new Error('Novo grupo de snapshot não foi retornado após a criação.');
+
+      // 2. Preparar os itens do snapshot original para duplicação
+      const originalItems = snapshotToDuplicate.snapshot_items;
+      if (!originalItems || originalItems.length === 0) {
+        toast.info("Snapshot original não continha itens, um snapshot vazio foi criado.");
+        onSnapshotDeleted(); // Refresh
+        return;
+      }
+
+      const newItems = originalItems.map(item => ({
+        snapshot_group_id: newGroup.id,
+        asset_id: item.asset_id,
+        asset_name: item.asset_name,
+        asset_category_name: item.asset_category_name,
+        total_value_brl: item.total_value_brl,
+        is_crypto_total: item.is_crypto_total,
+      }));
+
+      // 3. Inserir os novos itens em lote
+      const { error: itemsError } = await supabase.from('snapshot_items').insert(newItems);
+
+      if (itemsError) {
+        // Rollback: se a inserção de itens falhar, exclua o grupo recém-criado
+        await supabase.from('snapshot_groups').delete().eq('id', newGroup.id);
+        throw new Error(`Falha ao duplicar itens do snapshot: ${itemsError.message}`);
+      }
+
+      toast.success("Snapshot duplicado com sucesso!");
+      onSnapshotDeleted(); // Atualiza a lista na página de relatórios
+
+    } catch (error: any) {
+      console.error("Erro ao duplicar snapshot:", error);
+      toast.error(error.message || "Erro desconhecido ao duplicar snapshot.");
+    }
   };
 
   const confirmDelete = async () => {
@@ -106,24 +158,33 @@ const SnapshotHistoryTable: React.FC<SnapshotHistoryTableProps> = ({ snapshotGro
             <TableHead className="w-[180px]">Data</TableHead>
             <TableHead className="min-w-[200px]">Notas</TableHead>
             <TableHead className="text-right">Patrimônio Total (R$)</TableHead>
-            <TableHead className="w-[120px] text-center">Ações</TableHead> {/* Coluna Ações com expandir e excluir */}
+            <TableHead className="w-[120px] text-center">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {snapshotGroupsData.map((group) => (
             <React.Fragment key={group.id}>
-              <TableRow className="hover:bg-muted/50 data-[state=open]:bg-muted/50">
-                <TableCell>{new Date(group.created_at).toLocaleDateString('pt-BR')}</TableCell>
+              <TableRow 
+                className="hover:bg-muted/50 data-[state=open]:bg-muted/50 cursor-pointer"
+                onClick={() => toggleRowExpansion(group.id)}
+                data-state={expandedRows[group.id] ? 'open' : 'closed'}
+              >
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    {expandedRows[group.id] ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                    {new Date(group.created_at).toLocaleDateString('pt-BR')}
+                  </div>
+                </TableCell>
                 <TableCell className="max-w-xs truncate" title={group.notes || undefined}>
                   {group.notes || '-'}
                 </TableCell>
                 <TableCell className="text-right font-medium">
                   {group.totalPatrimonioGrupo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </TableCell>
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}> {/* Impede que o clique na área de ações expanda/recolha a linha */}
                   <div className="flex justify-center items-center space-x-1">
-                    <Button variant="ghost" size="icon" onClick={() => toggleRowExpansion(group.id)} aria-label={expandedRows[group.id] ? "Recolher" : "Expandir"}>
-                      {expandedRows[group.id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                     <Button variant="ghost" size="icon" onClick={() => handleDuplicateSnapshot(group)} aria-label="Duplicar snapshot">
+                      <Copy className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                     </Button>
                     <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(group)} aria-label="Excluir snapshot">
                       <Trash2 className="h-4 w-4 text-destructive hover:text-destructive/80" />
@@ -132,7 +193,13 @@ const SnapshotHistoryTable: React.FC<SnapshotHistoryTableProps> = ({ snapshotGro
                 </TableCell>
               </TableRow>
               {expandedRows[group.id] && (
-                <TableRow><TableCell /><TableCell colSpan={3}><SnapshotItemsTable items={group.snapshot_items} /></TableCell></TableRow>
+                <TableRow className="bg-muted/20 hover:bg-muted/40">
+                  <TableCell colSpan={4} className="p-0">
+                    <div className="p-4">
+                      <SnapshotItemsTable items={group.snapshot_items} onUpdate={onSnapshotDeleted} />
+                    </div>
+                  </TableCell>
+                </TableRow>
               )}
             </React.Fragment>
           ))}
