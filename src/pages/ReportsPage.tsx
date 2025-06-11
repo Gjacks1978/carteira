@@ -10,6 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AssetPivotTable from '@/components/reports/AssetPivotTable';
 import PatrimonioTotalChart from '@/components/reports/PatrimonioTotalChart';
 import AssetEvolutionStackedBarChart from '@/components/reports/AssetEvolutionStackedBarChart';
+import AllocationChart from '@/components/dashboard/AllocationChart';
+import AllocationBreakdownList from '@/components/dashboard/AllocationBreakdownList';
+import { getCategoryColorMap } from '@/lib/chart-colors';
 import { supabase } from '@/lib/supabaseClient'; // Import Supabase client
 import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
 import { SnapshotGroupWithTotal, SnapshotItem } from '@/types/reports'; // Import type
@@ -28,7 +31,10 @@ const ReportsPage: React.FC = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [snapshotGroupsData, setSnapshotGroupsData] = useState<SnapshotGroupWithTotal[]>([]);
   const [pageIsLoading, setPageIsLoading] = useState(true);
-  const [pageFetchError, setPageFetchError] = useState<string | null>(null); // <-- ADICIONAR ESTADO DE REFRESH
+  const [pageFetchError, setPageFetchError] = useState<string | null>(null);
+  const [portfolioAllocationData, setPortfolioAllocationData] = useState<{name: string, value: number}[]>([]);
+  const [categoryColorMap, setCategoryColorMap] = useState<Map<string, string>>(new Map());
+  const [totalValueForAllocation, setTotalValueForAllocation] = useState(0);
 
   const handleRegisterSnapshot = () => {
     setIsModalOpen(true);
@@ -145,6 +151,39 @@ const ReportsPage: React.FC = () => {
     fetchSnapshotDataForPage();
   }, [user, refreshKey]);
 
+  useEffect(() => {
+    if (filteredData.length > 0) {
+      // Data is already sorted by date ascending in the 'pnl' useMemo, but let's be safe
+      const latestSnapshot = [...filteredData].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )[0];
+
+      if (latestSnapshot && latestSnapshot.snapshot_items) {
+        const allocationMap = new Map<string, number>();
+        
+        latestSnapshot.snapshot_items.forEach(item => {
+          const category = item.asset_category_name || 'Sem Categoria';
+          const currentValue = allocationMap.get(category) || 0;
+          allocationMap.set(category, currentValue + (item.total_value_brl || 0));
+        });
+
+        const allocationData = Array.from(allocationMap)
+          .map(([name, value]) => ({ name, value }))
+          .filter(item => item.value > 0);
+        
+        setPortfolioAllocationData(allocationData);
+        setTotalValueForAllocation(latestSnapshot.totalPatrimonioGrupo);
+
+        const categoryNames = allocationData.map(item => item.name);
+        setCategoryColorMap(getCategoryColorMap(categoryNames));
+      }
+    } else {
+      setPortfolioAllocationData([]);
+      setCategoryColorMap(new Map());
+      setTotalValueForAllocation(0);
+    }
+  }, [filteredData]);
+
   return (
     <div className="container mx-auto py-8 px-4 md:px-6 lg:px-8">
                 <div className="flex justify-between items-center mb-6">
@@ -195,9 +234,62 @@ const ReportsPage: React.FC = () => {
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 mb-8">
-          <PatrimonioTotalChart snapshotGroupsData={filteredData} isLoading={pageIsLoading} />
-          <AssetEvolutionStackedBarChart snapshotGroupsData={filteredData} isLoading={pageIsLoading} />
+        <div className="space-y-6 mb-8">
+          {/* Bloco 1: Histórico do Patrimônio Total */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Histórico do Patrimônio Total</CardTitle>
+              <CardDescription>Evolução do valor total da carteira no período selecionado.</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <PatrimonioTotalChart 
+                snapshotGroupsData={filteredData} 
+                isLoading={pageIsLoading} 
+              />
+            </CardContent>
+          </Card>
+
+          {/* Bloco 2: Alocação por Classe (Último Snapshot) */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Alocação por Classe</CardTitle>
+              <CardDescription>Distribuição da carteira no último snapshot do período selecionado.</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+              {portfolioAllocationData.length > 0 ? (
+                <>
+                  <div className="flex flex-col gap-4">
+                    <AllocationChart data={portfolioAllocationData} colorMap={categoryColorMap} />
+                  </div>
+                  <div className="flex flex-col gap-4">
+                    <AllocationBreakdownList 
+                      data={portfolioAllocationData} 
+                      totalValue={totalValueForAllocation} 
+                      colorMap={categoryColorMap}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="col-span-2 text-center text-muted-foreground py-8">
+                  {pageIsLoading ? 'Carregando dados de alocação...' : 'Não há dados de alocação para o período selecionado.'}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Bloco 3: Composição do Patrimônio por Ativo */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Composição do Patrimônio por Ativo</CardTitle>
+              <CardDescription>Distribuição do valor da carteira entre os ativos ao longo do tempo.</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <AssetEvolutionStackedBarChart 
+                snapshotGroupsData={filteredData} 
+                isLoading={pageIsLoading} 
+              />
+            </CardContent>
+          </Card>
         </div>
 
         
