@@ -1,7 +1,7 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { SnapshotGroupWithTotal, SnapshotItem } from '@/types/reports';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+
 
 interface AssetEvolutionStackedBarChartProps {
   snapshotGroupsData: SnapshotGroupWithTotal[];
@@ -75,53 +75,33 @@ const AssetEvolutionStackedBarChart: React.FC<AssetEvolutionStackedBarChartProps
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Composição do Patrimônio por Ativo</CardTitle>
-          <CardDescription>Distribuição do valor da carteira entre os ativos ao longo do tempo.</CardDescription>
-        </CardHeader>
-        <CardContent className="h-[300px] flex items-center justify-center">
-          <p className="text-muted-foreground">Carregando gráfico...</p>
-        </CardContent>
-      </Card>
+      <div className="h-[400px] flex items-center justify-center">
+        <p className="text-muted-foreground">Carregando gráfico...</p>
+      </div>
     );
   }
 
   if (!chartData || chartData.length === 0 || assetKeys.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Composição do Patrimônio por Ativo</CardTitle>
-          <CardDescription>Distribuição do valor da carteira entre os ativos ao longo do tempo.</CardDescription>
-        </CardHeader>
-        <CardContent className="h-[300px] flex items-center justify-center">
-          <p className="text-muted-foreground">Dados insuficientes para exibir o gráfico.</p>
-        </CardContent>
-      </Card>
+      <div className="h-[400px] flex items-center justify-center">
+        <p className="text-muted-foreground">Dados insuficientes para exibir o gráfico.</p>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Composição do Patrimônio por Ativo</CardTitle>
-        <CardDescription>Distribuição do valor da carteira entre os ativos ao longo do tempo.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={400}>
-          <BarChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 50 /* Increased bottom margin for legend */ }}>
-            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2}/>
-            <XAxis dataKey="formattedDate" tick={{ fontSize: 12 }} angle={-45} textAnchor="end" interval={0} stroke="hsl(var(--muted-foreground))" />
-            <YAxis tickFormatter={formatCurrencyForAxis} tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" width={80}/>
-            <Tooltip formatter={(value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} />
-            <Legend wrapperStyle={{fontSize: "12px", paddingTop: "20px"}} />
-            {assetKeys.map((key, index) => (
-              <Bar key={key} dataKey={key} stackId="a" fill={COLORS[index % COLORS.length]} />
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
+    <ResponsiveContainer width="100%" height={400}>
+      <BarChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 50 /* Increased bottom margin for legend */ }}>
+        <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2}/>
+        <XAxis dataKey="formattedDate" tick={{ fontSize: 12 }} angle={-45} textAnchor="end" interval={0} stroke="hsl(var(--muted-foreground))" />
+        <YAxis tickFormatter={formatCurrencyForAxis} tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" width={80}/>
+        <Tooltip formatter={(value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} />
+        <Legend wrapperStyle={{fontSize: "12px", paddingTop: "20px"}} />
+        {assetKeys.map((key, index) => (
+          <Bar key={key} dataKey={key} stackId="a" fill={COLORS[index % COLORS.length]} />
+        ))}
+      </BarChart>
+    </ResponsiveContainer>
   );
 };
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { SnapshotGroupWithTotal } from '@/types/reports';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+
 
 interface PatrimonioTotalChartProps {
   snapshotGroupsData: SnapshotGroupWithTotal[];
@@ -50,60 +50,40 @@ const PatrimonioTotalChart: React.FC<PatrimonioTotalChartProps> = ({ snapshotGro
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Histórico do Patrimônio Total</CardTitle>
-          <CardDescription>Evolução do valor total da carteira ao longo do tempo.</CardDescription>
-        </CardHeader>
-        <CardContent className="h-[300px] flex items-center justify-center">
-          <p className="text-muted-foreground">Carregando gráfico...</p>
-        </CardContent>
-      </Card>
+      <div className="h-[300px] flex items-center justify-center">
+        <p className="text-muted-foreground">Carregando gráfico...</p>
+      </div>
     );
   }
 
   if (chartData.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Histórico do Patrimônio Total</CardTitle>
-          <CardDescription>Evolução do valor total da carteira ao longo do tempo.</CardDescription>
-        </CardHeader>
-        <CardContent className="h-[300px] flex items-center justify-center">
-          <p className="text-muted-foreground">Dados insuficientes para exibir o gráfico.</p>
-        </CardContent>
-      </Card>
+      <div className="h-[300px] flex items-center justify-center">
+        <p className="text-muted-foreground">Dados insuficientes para exibir o gráfico.</p>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Histórico do Patrimônio Total</CardTitle>
-        <CardDescription>Evolução do valor total da carteira ao longo do tempo.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
-            <XAxis 
-              dataKey="formattedDate" 
-              tick={{ fontSize: 12 }}
-              stroke="hsl(var(--muted-foreground))"
-            />
-            <YAxis 
-              tickFormatter={formatCurrencyForAxis} 
-              tick={{ fontSize: 12 }} 
-              stroke="hsl(var(--muted-foreground))"
-              width={80}
-            />
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '3 3' }} />
-            <Legend wrapperStyle={{fontSize: "14px"}} />
-            <Line type="monotone" dataKey="Valor Total" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4, fill: 'hsl(var(--primary))' }} activeDot={{ r: 6 }} />
-          </LineChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
+    <ResponsiveContainer width="100%" height={300}>
+      <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+        <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
+        <XAxis 
+          dataKey="formattedDate" 
+          tick={{ fontSize: 12 }}
+          stroke="hsl(var(--muted-foreground))"
+        />
+        <YAxis 
+          tickFormatter={formatCurrencyForAxis} 
+          tick={{ fontSize: 12 }} 
+          stroke="hsl(var(--muted-foreground))"
+          width={80}
+        />
+        <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '3 3' }} />
+        <Legend wrapperStyle={{fontSize: "14px"}} />
+        <Line type="monotone" dataKey="Valor Total" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4, fill: 'hsl(var(--primary))' }} activeDot={{ r: 6 }} />
+      </LineChart>
+    </ResponsiveContainer>
   );
 };
 

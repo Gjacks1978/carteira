@@ -385,130 +385,54 @@ useEffect(() => {
         </Card>
       </div>
 
-      {/* Patrimônio Charts Section */}
-      <Card className="my-6">
+      {/* Bloco 1: Histórico do Patrimônio Total */}
+      <Card>
         <CardHeader>
-          <CardTitle>Patrimônio ao Longo do Tempo</CardTitle>
-          <CardDescription>
-            Acompanhe a evolução total do seu patrimônio e a composição dele por ativo através dos snapshots registrados.
-          </CardDescription>
+          <CardTitle>Histórico do Patrimônio Total</CardTitle>
+          <CardDescription>Evolução do valor total da carteira ao longo do tempo.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <PatrimonioTotalChart 
-              snapshotGroupsData={snapshotGroupsData} 
-              isLoading={isSnapshotLoading} 
-            />
-            <AssetEvolutionStackedBarChart 
-              snapshotGroupsData={snapshotGroupsData} 
-              isLoading={isSnapshotLoading} 
-            />
-          </div>
-          {snapshotFetchError && (
-            <p className="text-sm text-red-500 text-center mt-4">Erro ao carregar dados do patrimônio: {snapshotFetchError}</p>
-          )}
+        <CardContent className="pt-6">
+          <PatrimonioTotalChart 
+            snapshotGroupsData={snapshotGroupsData} 
+            isLoading={isSnapshotLoading} 
+          />
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-          <TabsTrigger value="allocation">Alocação</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="lg:col-span-4">
-              <CardHeader>
-                <CardTitle>Performance dos Investimentos</CardTitle>
-              </CardHeader>
-              <CardContent className="pl-2">
-                <PerformanceChart period={period} portfolioHistoryData={portfolioPerformanceData} isLoading={isSnapshotLoading} />
-              </CardContent>
-            </Card>
-            
-            <Card className="lg:col-span-3">
-              <CardHeader>
-                <CardTitle>Alocação por Tipo</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-center">
-                  <AllocationChart data={dashboardData.portfolioAllocation} />
-                </div>
-                <AllocationBreakdownList 
-                  data={dashboardData.portfolioAllocation} 
-                  totalValue={dashboardData.totalInvested}
-                />
-              </CardContent>
-            </Card>
+      {/* Bloco 2: Alocação por Classe */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Alocação por Classe</CardTitle>
+          <CardDescription>Distribuição percentual e valores da carteira por classe de ativo.</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+          <div className="flex flex-col gap-4">
+            <h3 className="text-lg font-semibold text-center">Distribuição Percentual</h3>
+            <AllocationChart data={dashboardData.portfolioAllocation} />
           </div>
-          
-          <QuickStats />
-        </TabsContent>
-        
-        <TabsContent value="allocation" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Distribuição de Ativos</CardTitle>
-            </CardHeader>
-            <CardContent className="pl-2">
-              <AllocationChart data={dashboardData.portfolioAllocation} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="performance" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-medium">Performance por Período</h3>
-            <div className="flex items-center space-x-2">
-              <Button 
-                variant={period === "1m" ? "default" : "outline"} 
-                size="sm" 
-                onClick={() => setPeriod("1m")}
-              >
-                1M
-              </Button>
-              <Button 
-                variant={period === "3m" ? "default" : "outline"} 
-                size="sm"
-                onClick={() => setPeriod("3m")}
-              >
-                3M
-              </Button>
-              <Button 
-                variant={period === "6m" ? "default" : "outline"} 
-                size="sm"
-                onClick={() => setPeriod("6m")}
-              >
-                6M
-              </Button>
-              <Button 
-                variant={period === "1y" ? "default" : "outline"} 
-                size="sm"
-                onClick={() => setPeriod("1y")}
-              >
-                1A
-              </Button>
-              <Button 
-                variant={period === "all" ? "default" : "outline"} 
-                size="sm"
-                onClick={() => setPeriod("all")}
-              >
-                Tudo
-              </Button>
-            </div>
+          <div className="flex flex-col gap-4">
+            <h3 className="text-lg font-semibold text-center">Valores por Classe</h3>
+            <AllocationBreakdownList 
+              data={dashboardData.portfolioAllocation} 
+              totalValue={dashboardData.totalInvested} 
+            />
           </div>
-          
-          <Card>
-            <CardContent className="pt-6">
-              <PerformanceChart period={period} portfolioHistoryData={portfolioPerformanceData} isLoading={isSnapshotLoading} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Bloco 3: Composição do Patrimônio por Ativo */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Composição do Patrimônio por Ativo</CardTitle>
+          <CardDescription>Distribuição do valor da carteira entre os ativos ao longo do tempo.</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <AssetEvolutionStackedBarChart 
+            snapshotGroupsData={snapshotGroupsData} 
+            isLoading={isSnapshotLoading} 
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 };
-
-export default InvestmentDashboard;
