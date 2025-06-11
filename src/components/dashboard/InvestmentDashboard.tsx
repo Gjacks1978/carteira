@@ -430,7 +430,7 @@ useEffect(() => {
             
             <Card className="lg:col-span-3">
               <CardHeader>
-                <CardTitle>Alocação por Classe</CardTitle>
+                <CardTitle>Alocação por Tipo</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-center">

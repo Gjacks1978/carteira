@@ -17,7 +17,7 @@ export const AllocationByClassCard: React.FC<AllocationByClassCardProps> = ({ as
     return (
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Alocação por Classe</CardTitle>
+          <CardTitle className="text-sm font-medium">Alocação por Tipo</CardTitle>
           <PieChart className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
@@ -30,7 +30,7 @@ export const AllocationByClassCard: React.FC<AllocationByClassCardProps> = ({ as
   const totalPortfolioValueBRL = assets.reduce((sum, asset) => sum + (asset.current_total_value_brl ?? 0), 0);
   
   const allocationByClass: { [key: string]: number } = assets.reduce((acc, asset) => {
-    const assetClass = asset.type || "Não Classificado"; // Usa 'type' como classe
+    const assetClass = asset.sector || asset.type || "Não Classificado"; // Para cripto, usa o setor. Para outros, usa o tipo.
     acc[assetClass] = (acc[assetClass] || 0) + (asset.current_total_value_brl ?? 0);
     return acc;
   }, {} as { [key: string]: number });
@@ -46,7 +46,7 @@ export const AllocationByClassCard: React.FC<AllocationByClassCardProps> = ({ as
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Alocação por Classe</CardTitle>
+        <CardTitle className="text-sm font-medium">Alocação por Tipo</CardTitle>
         <PieChart className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent className="space-y-3 pt-4">

@@ -9,6 +9,7 @@ export interface Asset {
   return: number;
   returnPercentage: number;
   categoryId?: string;
+  sector?: string; // Para criptoativos, armazena o setor (ex: DeFi, Smart Contract)
 }
 
 export interface Crypto {

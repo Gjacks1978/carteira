@@ -55,7 +55,7 @@ const RegisterSnapshotModal: React.FC<RegisterSnapshotModalProps> = ({ isOpen, o
             if (category && category.type !== 'crypto') {
               nonCryptoDisplayItems.push({
                 id: `asset-${asset.id}`,
-                displayName: `${asset.name} (Cat: ${category.name || 'N/A'})`,
+                displayName: `${asset.name} (Classe: ${category.name || 'N/A'})`,
                 currentValue: asset.current_total_value_brl || 0,
                 itemType: 'NON_CRYPTO_ASSET',
                 originalAssetId: asset.id,
@@ -173,7 +173,7 @@ const RegisterSnapshotModal: React.FC<RegisterSnapshotModalProps> = ({ isOpen, o
           return {
             snapshot_group_id: snapshotGroupId,
             asset_id: item.originalAssetId,
-            asset_name: item.displayName.split(' (Cat:')[0],
+            asset_name: item.displayName.split(' (Classe:')[0],
             asset_category_name: item.assetCategoryName,
             total_value_brl: submittedValue,
             is_crypto_total: false, // Explicitly false for these

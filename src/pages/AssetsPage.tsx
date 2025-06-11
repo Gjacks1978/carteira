@@ -64,39 +64,20 @@ const AssetsPage = () => {
         .order("name");
       
       if (categoriesError) throw categoriesError;
+      if (categoriesData) {
+        setCategories(categoriesData as AssetCategoryType[]);
+      }
       
-      // Buscar todos os ativos
+      // Buscar todos os ativos tradicionais
       const { data: assetsData, error: assetsError } = await supabase
         .from("assets")
         .select("*")
         .eq("user_id", user.id);
       
       if (assetsError) throw assetsError;
-
-      // BUSCAR DADOS DE CRIPTO E CALCULAR TOTAL
-      const { data: cryptoData, error: cryptoError } = await supabase
-        .from("crypto_assets") // Corrigido nome da tabela
-        .select("total_brl") // Corrigido para o nome da coluna conforme Supabase Studio
-        .eq("user_id", user.id); // Assumindo coluna user_id
-
-      if (cryptoError) throw cryptoError;
-
-      let calculatedTotalCryptoValue = 0;
-      if (cryptoData) {
-        calculatedTotalCryptoValue = cryptoData.reduce((sum, crypto) => {
-          const value = parseFloat(crypto.total_brl as any);
-          return sum + (isNaN(value) ? 0 : value);
-        }, 0);
-      }
-      setTotalCryptoValue(calculatedTotalCryptoValue);
-      // FIM DA BUSCA DE CRIPTO
-      
-      if (categoriesData) {
-        setCategories(categoriesData as AssetCategoryType[]);
-      }
-      
+      let traditionalAssets: Asset[] = [];
       if (assetsData) {
-        const transformedAssets = assetsData.map(item => ({
+        traditionalAssets = assetsData.map(item => ({
           id: item.id,
           name: item.name,
           ticker: item.ticker,
@@ -109,9 +90,41 @@ const AssetsPage = () => {
           categoryId: item.category_id,
           user_id: item.user_id
         }));
-        
-        setAssets(transformedAssets);
       }
+
+      // BUSCAR DADOS DE CRIPTO E TRANSFORMAR EM ASSETS
+      const { data: cryptoData, error: cryptoError } = await supabase
+        .from("crypto_assets")
+        .select("id, name, ticker, total_brl, sectors(name)") // Corrigido: busca o nome da tabela relacionada 'sectors'
+        .eq("user_id", user.id);
+
+      if (cryptoError) throw cryptoError;
+      
+      let cryptoAssets: Asset[] = [];
+      let calculatedTotalCryptoValue = 0;
+      if (cryptoData) {
+        cryptoAssets = cryptoData.map(crypto => {
+          const totalBRL = Number(crypto.total_brl || 0);
+          calculatedTotalCryptoValue += totalBRL;
+          return {
+            id: `crypto-${crypto.id}`,
+            name: crypto.name,
+            ticker: crypto.ticker,
+            type: 'Criptoativos',
+            sector: crypto.sectors ? crypto.sectors.name : 'Sem Setor', // Corrigido: acessa o nome do setor corretamente
+            current_total_value_brl: totalBRL,
+            price: 0,
+            quantity: 0,
+            return: 0,
+            returnPercentage: 0,
+          };
+        });
+      }
+      setTotalCryptoValue(calculatedTotalCryptoValue);
+      
+      // Combinar ativos tradicionais e cripto
+      setAssets([...traditionalAssets, ...cryptoAssets]);
+
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({
