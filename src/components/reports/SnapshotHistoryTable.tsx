@@ -113,7 +113,7 @@ const SnapshotHistoryTable: React.FC<SnapshotHistoryTableProps> = ({ snapshotGro
           {snapshotGroupsData.map((group) => (
             <React.Fragment key={group.id}>
               <TableRow className="hover:bg-muted/50 data-[state=open]:bg-muted/50">
-                <TableCell>{new Date(group.created_at).toLocaleString('pt-BR')}</TableCell>
+                <TableCell>{new Date(group.created_at).toLocaleDateString('pt-BR')}</TableCell>
                 <TableCell className="max-w-xs truncate" title={group.notes || undefined}>
                   {group.notes || '-'}
                 </TableCell>

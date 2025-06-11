@@ -28,6 +28,7 @@ const RegisterSnapshotModal: React.FC<RegisterSnapshotModalProps> = ({ isOpen, o
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [initialFormValues, setInitialFormValues] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState('');
+  const [snapshotDate, setSnapshotDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -130,6 +131,7 @@ const RegisterSnapshotModal: React.FC<RegisterSnapshotModalProps> = ({ isOpen, o
       setInitialFormValues({});
       setNotes('');
       setError(null);
+      setSnapshotDate(new Date().toISOString().split('T')[0]);
     }
   }, [isOpen, user, supabase]);
 
@@ -152,7 +154,7 @@ const RegisterSnapshotModal: React.FC<RegisterSnapshotModalProps> = ({ isOpen, o
     try {
       const { data: groupData, error: groupError } = await supabase
         .from('snapshot_groups')
-        .insert({ user_id: user.id, notes: notes || null })
+        .insert({ user_id: user.id, notes: notes || null, created_at: snapshotDate })
         .select('id')
         .single();
 
@@ -210,7 +212,7 @@ const RegisterSnapshotModal: React.FC<RegisterSnapshotModalProps> = ({ isOpen, o
   };
 
   const hasChanges = () => {
-    return JSON.stringify(formValues) !== JSON.stringify(initialFormValues) || notes !== '';
+    return JSON.stringify(formValues) !== JSON.stringify(initialFormValues) || notes !== '' || snapshotDate !== new Date().toISOString().split('T')[0];
   };
 
   return (
@@ -280,7 +282,20 @@ const RegisterSnapshotModal: React.FC<RegisterSnapshotModalProps> = ({ isOpen, o
                         />
                       </div>
                     ))}
-                    <div>
+                    <div className="mt-4">
+                      <label htmlFor="snapshot-date" className="block text-sm font-medium text-gray-700">
+                        Data do Snapshot
+                      </label>
+                      <input
+                        type="date"
+                        id="snapshot-date"
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        value={snapshotDate}
+                        onChange={(e) => setSnapshotDate(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="mt-4">
                       <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
                         Notas (Opcional)
                       </label>
