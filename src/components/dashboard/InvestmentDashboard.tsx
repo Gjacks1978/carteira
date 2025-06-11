@@ -29,6 +29,7 @@ import { SnapshotGroupWithTotal } from '@/types/reports';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
+import { getCategoryColorMap } from '@/lib/chart-colors';
 import { fetchUSDtoBRLRate, FALLBACK_USD_TO_BRL_RATE } from "@/lib/utils";
 
 // Helper function to safely parse numeric values
@@ -53,7 +54,8 @@ const InvestmentDashboard = () => {
     cryptoCount: 0,
   });
   const [snapshotGroupsData, setSnapshotGroupsData] = useState<SnapshotGroupWithTotal[]>([]);
-  const [isSnapshotLoading, setIsSnapshotLoading] = useState(true);
+    const [isSnapshotLoading, setIsSnapshotLoading] = useState(true);
+  const [categoryColorMap, setCategoryColorMap] = useState<Map<string, string>>(new Map());
   const [snapshotFetchError, setSnapshotFetchError] = useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -242,6 +244,9 @@ useEffect(() => {
         .map(([name, value]) => ({ name, value }))
         .filter(item => item.value > 0); // Filter out zero-value categories
 
+      const categoryNames = portfolioAllocation.map(item => item.name);
+      setCategoryColorMap(getCategoryColorMap(categoryNames));
+
       setDashboardData({
         totalInvested: totalInvestedDisplay,
         totalReturn: totalReturnForDashboard,
@@ -407,14 +412,13 @@ useEffect(() => {
         </CardHeader>
         <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
           <div className="flex flex-col gap-4">
-            <h3 className="text-lg font-semibold text-center">Distribuição Percentual</h3>
-            <AllocationChart data={dashboardData.portfolioAllocation} />
+            <AllocationChart data={dashboardData.portfolioAllocation} colorMap={categoryColorMap} />
           </div>
           <div className="flex flex-col gap-4">
-            <h3 className="text-lg font-semibold text-center">Valores por Classe</h3>
             <AllocationBreakdownList 
               data={dashboardData.portfolioAllocation} 
               totalValue={dashboardData.totalInvested} 
+              colorMap={categoryColorMap}
             />
           </div>
         </CardContent>

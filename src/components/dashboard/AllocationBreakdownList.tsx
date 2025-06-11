@@ -1,7 +1,6 @@
 import React from 'react';
 
-// Reusing colors from AllocationChart for consistency
-const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#6366f1", "#ec4899", "#8b5cf6"];
+
 
 interface AllocationItem {
   name: string;
@@ -11,9 +10,10 @@ interface AllocationItem {
 interface AllocationBreakdownListProps {
   data: AllocationItem[];
   totalValue: number;
+  colorMap: Map<string, string>;
 }
 
-const AllocationBreakdownList: React.FC<AllocationBreakdownListProps> = ({ data, totalValue }) => {
+const AllocationBreakdownList: React.FC<AllocationBreakdownListProps> = ({ data, totalValue, colorMap }) => {
   if (!data || data.length === 0 || totalValue === 0) {
     return <p className="text-sm text-muted-foreground text-center py-4">Dados de alocação indisponíveis.</p>;
   }
@@ -25,7 +25,7 @@ const AllocationBreakdownList: React.FC<AllocationBreakdownListProps> = ({ data,
     <div className="space-y-3 pt-4">
       {sortedData.map((item, index) => {
         const percentage = (item.value / totalValue) * 100;
-        const barColor = COLORS[index % COLORS.length];
+                const barColor = colorMap.get(item.name) || '#cccccc';
 
         return (
           <div key={item.name} className="text-sm">

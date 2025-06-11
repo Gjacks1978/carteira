@@ -1,20 +1,14 @@
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
-const COLORS = [
-  "hsl(260, 70%, 60%)", // Roxo vibrante
-  "hsl(217, 91%, 60%)", // Azul
-  "hsl(142, 76%, 36%)", // Verde
-  "hsl(37, 100%, 50%)", // Amarelo
-  "hsl(0, 84%, 60%)",  // Vermelho
-  "hsl(276, 70%, 50%)"  // Roxo mais escuro
-];
+
 
 interface AllocationChartProps {
   data?: Array<{name: string, value: number}>;
+  colorMap: Map<string, string>;
 }
 
-const AllocationChart = ({ data }: AllocationChartProps) => {
+const AllocationChart = ({ data, colorMap }: AllocationChartProps) => {
   // Default empty data if none provided
   const chartData = data && data.length > 0 ? data : [
     { name: "Sem dados", value: 1 }
@@ -40,7 +34,7 @@ const AllocationChart = ({ data }: AllocationChartProps) => {
             }
           >
             {chartData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            <Cell key={`cell-${index}`} fill={colorMap.get(entry.name) || '#cccccc'} />
             ))}
           </Pie>
           <Tooltip
@@ -82,10 +76,13 @@ const AllocationChart = ({ data }: AllocationChartProps) => {
               gap: '8px',
               marginTop: '8px'
             }}
-            formatter={(value, entry: any, index) => {
-              // Adiciona o valor percentual ao lado do nome da legenda
-              const percent = (entry.payload.payload.percent * 100).toFixed(1);
-              return `${entry.payload.name} (${percent}%)`;
+            formatter={(value, entry: any) => {
+              const { name, percent } = entry.payload.payload;
+              if (percent === undefined || isNaN(percent)) {
+                return name;
+              }
+              const percentage = (percent * 100).toFixed(1);
+              return `${name} (${percentage}%)`;
             }}
             />
           )}
