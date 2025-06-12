@@ -15,6 +15,7 @@
 - **Integração com Supabase**: Autenticação segura e persistência de dados em tempo real.
 - **Design Responsivo**: Acesse sua carteira em qualquer dispositivo, seja no desktop ou no celular.
 - **Temas Claro e Escuro**: Personalize a aparência da aplicação para sua preferência.
+- **Sidebar Aprimorada**: Perfil do usuário e botão de alternância de tema fixos na base da barra lateral, acessíveis mesmo com rolagem.
 
 ## 🛠️ Tecnologias Utilizadas
 

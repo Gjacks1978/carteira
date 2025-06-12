@@ -27,6 +27,7 @@ O **Carteira** é uma aplicação web para gerenciamento de ativos financeiros, 
 - **Sistema de Snapshots**: Funcionalidade que permite ao usuário "fotografar" o estado atual do seu portfólio. Esses snapshots são armazenados e podem ser usados futuramente para análises de desempenho histórico.
 - **Cotação de Moedas**: Integração com a AwesomeAPI para buscar a cotação do Dólar (USD) para Real (BRL) em tempo real, usada para cálculos de conversão.
 - **Tema Claro e Escuro**: Interface adaptável com temas claro e escuro para melhor experiência do usuário.
+- **Sidebar Aprimorada**: Nome do usuário e botão de alternância de tema fixos na base da barra lateral, garantindo acesso rápido mesmo com rolagem.
 
 ## 🏗️ Estrutura do Projeto
 
