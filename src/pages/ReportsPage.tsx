@@ -1,6 +1,28 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
+
+// Helper to retrieve saved date range from localStorage (or default)
+const getInitialDateRange = (): DateRange | undefined => {
+  if (typeof window !== 'undefined') {
+    const raw = localStorage.getItem('reportsDateRange');
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed === null) return undefined; // 'Sempre' preset
+        const from = parsed.from ? new Date(parsed.from) : undefined;
+        const to = parsed.to ? new Date(parsed.to) : undefined;
+        if (from || to) {
+          return { from, to };
+        }
+      } catch (err) {
+        console.error('[ReportsPage] Falha ao ler período salvo:', err);
+      }
+    }
+  }
+  return { from: subDays(new Date(), 90), to: new Date() };
+};
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -23,10 +45,7 @@ import { CSVLink } from 'react-csv';
 import { FileDown } from 'lucide-react'; // Import type
 
 const ReportsPage: React.FC = () => {
-  const [date, setDate] = useState<DateRange | undefined>({
-    from: subDays(new Date(), 90),
-    to: new Date(),
-  });
+  const [date, setDate] = useState<DateRange | undefined>(getInitialDateRange());
   const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [snapshotGroupsData, setSnapshotGroupsData] = useState<SnapshotGroupWithTotal[]>([]);
@@ -36,8 +55,6 @@ const ReportsPage: React.FC = () => {
   const [portfolioAllocationData, setPortfolioAllocationData] = useState<{name: string, value: number}[]>([]);
   const [categoryColorMap, setCategoryColorMap] = useState<Map<string, string>>(new Map());
   const [totalValueForAllocation, setTotalValueForAllocation] = useState(0);
-
-
 
   const filteredData = useMemo(() => {
     if (!date?.from) return snapshotGroupsData;
@@ -120,6 +137,22 @@ const ReportsPage: React.FC = () => {
       setTotalValueForAllocation(0);
     }
   }, [filteredData]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Podem ocorrer três cenários:
+      // 1) date é undefined -> usuário selecionou "Sempre". Salvamos null.
+      // 2) date definido porém sem to -> intervalo aberto.
+      // 3) intervalo completo.
+      const payload = date
+        ? {
+            from: date.from ? date.from.toISOString() : null,
+            to: date.to ? date.to.toISOString() : null,
+          }
+        : null;
+      localStorage.setItem('reportsDateRange', JSON.stringify(payload));
+    }
+  }, [date]);
 
   const fetchSnapshotHistory = useCallback(async () => {
     if (!user) {
