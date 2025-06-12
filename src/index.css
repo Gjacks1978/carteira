@@ -9,7 +9,7 @@
 
     --card: 0 0% 100%; /* Mais acinzentado para menor contraste */
     --card-foreground: 222.2 84% 4.9%;
-    --table-background: 0 0% 97%; /* Igual ao card no tema claro */
+    --table-background: 0 0% 100%; /* Igual ao card no tema claro */
 
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
@@ -35,7 +35,7 @@
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 0 0% 99%;
 
     --sidebar-foreground: 240 5.3% 26.1%;
 

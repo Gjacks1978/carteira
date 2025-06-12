@@ -3,7 +3,6 @@ import { Home, PieChart, Bitcoin, DollarSign, AlertCircle, BarChart3 } from "luc
 import { useEffect, useState } from "react";
 import { fetchUSDtoBRLRate, ExchangeRateData, FALLBACK_USD_TO_BRL_RATE } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ThemeToggle } from "./ThemeToggle";
 
 const Sidebar = () => {
   const [exchangeRateInfo, setExchangeRateInfo] = useState<ExchangeRateData>({
@@ -24,7 +23,7 @@ const Sidebar = () => {
 
   return (
     <TooltipProvider>
-      <div className="space-y-1.5 py-3 px-2">
+      <div className="space-y-1.5 py-3 px-2 flex-1 overflow-y-auto">
         <NavLink
           to="/"
           className={({ isActive }) =>
@@ -109,13 +108,7 @@ const Sidebar = () => {
           )}
         </div>
 
-        {/* User Info / Theme Toggle Footer Bar */}
-        <div className="mt-4 pt-4 flex items-center justify-between px-3 border-t border-muted/20">
-          <div className="text-sm text-muted-foreground">
-            {/* Futuro local para nome/avatar do usuário */}
-          </div>
-          <ThemeToggle />
-        </div>
+        {/* Footer removed: handled by SidebarWrapper */}
       </div>
     </TooltipProvider>
   );
