@@ -440,3 +440,5 @@ useEffect(() => {
     </div>
   );
 };
+
+export default InvestmentDashboard;

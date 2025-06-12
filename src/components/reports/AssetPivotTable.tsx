@@ -137,8 +137,8 @@ const AssetPivotTable: React.FC<AssetPivotTableProps> = ({ snapshotGroupsData, i
             <TableRow>
               <TableHead className="sticky left-0 bg-card z-10">Ativo</TableHead>
               <TableHead>Categoria</TableHead>
-              {dateColumns.map(date => (
-                <TableHead key={date} className="text-right">{date}</TableHead>
+              {dateColumns.map((date, index) => (
+                <TableHead key={`${date}-${index}`} className="text-right">{date}</TableHead>
               ))}
             </TableRow>
           </TableHeader>

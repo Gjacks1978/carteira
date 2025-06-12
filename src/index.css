@@ -4,10 +4,10 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 0 0% 97%;
     --foreground: 222.2 84% 4.9%;
 
-    --card: 0 0% 97%; /* Mais acinzentado para menor contraste */
+    --card: 0 0% 100%; /* Mais acinzentado para menor contraste */
     --card-foreground: 222.2 84% 4.9%;
     --table-background: 0 0% 97%; /* Igual ao card no tema claro */
 

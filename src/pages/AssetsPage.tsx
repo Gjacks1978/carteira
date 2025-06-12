@@ -84,7 +84,9 @@ const AssetsPage = () => {
           type: item.type,
           price: Number(item.price),
           quantity: Number(item.quantity),
-          current_total_value_brl: Number((item as any).current_total_value_brl || 0),
+          current_total_value_brl: item.current_total_value_brl !== null && item.current_total_value_brl !== undefined
+            ? Number(item.current_total_value_brl)
+            : Number(item.price) * Number(item.quantity),
           return: Number(item.return_value),
           returnPercentage: Number(item.return_percentage),
           categoryId: item.category_id,
@@ -95,7 +97,7 @@ const AssetsPage = () => {
       // BUSCAR DADOS DE CRIPTO E TRANSFORMAR EM ASSETS
       const { data: cryptoData, error: cryptoError } = await supabase
         .from("crypto_assets")
-        .select("id, name, ticker, total_brl, sectors(name)") // Corrigido: busca o nome da tabela relacionada 'sectors'
+        .select("*")
         .eq("user_id", user.id);
 
       if (cryptoError) throw cryptoError;
@@ -104,14 +106,18 @@ const AssetsPage = () => {
       let calculatedTotalCryptoValue = 0;
       if (cryptoData) {
         cryptoAssets = cryptoData.map(crypto => {
-          const totalBRL = Number(crypto.total_brl || 0);
+          const totalBRL = Number(
+            crypto.current_total_value_brl ??
+            crypto.total_brl ??
+            0
+          );
           calculatedTotalCryptoValue += totalBRL;
           return {
             id: `crypto-${crypto.id}`,
             name: crypto.name,
             ticker: crypto.ticker,
             type: 'Criptoativos',
-            sector: crypto.sectors ? crypto.sectors.name : 'Sem Setor', // Corrigido: acessa o nome do setor corretamente
+            sector: 'Criptoativos',
             current_total_value_brl: totalBRL,
             price: 0,
             quantity: 0,

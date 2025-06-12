@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronRight, Trash2, Copy } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, Trash2, Pencil } from 'lucide-react';
 import SnapshotItemsTable from './SnapshotItemsTable';
 import { SnapshotItem, SnapshotGroup, SnapshotGroupWithTotal } from '@/types/reports';
 import {
@@ -25,26 +25,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+
 interface SnapshotHistoryTableProps {
   snapshotGroupsData: SnapshotGroupWithTotal[];
   isLoading: boolean;
-  fetchError: string | null;
-  onSnapshotDeleted: () => void; // Callback para atualizar a lista na ReportsPage
-  // refreshKey pode ser removido se a atualização dos dados for gerenciada pelo pai através das novas props
+  onDelete: (snapshot: SnapshotGroupWithTotal) => void;
+  onDuplicate: (snapshotId: string) => void;
+  onRefresh: () => void;
+  onEdit: (snapshot: SnapshotGroupWithTotal) => void;
 }
 
-const SnapshotHistoryTable: React.FC<SnapshotHistoryTableProps> = ({ snapshotGroupsData, isLoading, fetchError, onSnapshotDeleted }) => {
-  const { user } = useAuth(); // User ainda pode ser útil para outras lógicas, como permissões futuras
-
-  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({}); // <-- ESTADO PARA LINHAS EXPANDIDAS
+const SnapshotHistoryTable: React.FC<SnapshotHistoryTableProps> = ({ snapshotGroupsData, isLoading, onDelete, onDuplicate, onRefresh, onEdit }) => {
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [snapshotToDelete, setSnapshotToDelete] = useState<SnapshotGroupWithTotal | null>(null);
 
   const toggleRowExpansion = (groupId: string) => {
-    setExpandedRows(prev => ({
-      ...prev,
-      [groupId]: !prev[groupId],
-    }));
+    setExpandedRows(prev => ({ ...prev, [groupId]: !prev[groupId] }));
   };
 
   const handleDeleteClick = (snapshot: SnapshotGroupWithTotal) => {
@@ -52,99 +50,15 @@ const SnapshotHistoryTable: React.FC<SnapshotHistoryTableProps> = ({ snapshotGro
     setIsDeleteDialogOpen(true);
   };
 
-    const handleDuplicateSnapshot = async (snapshotToDuplicate: SnapshotGroupWithTotal) => {
-    if (!snapshotToDuplicate || !user) return;
-
-    try {
-      // 1. Criar novo grupo de snapshot
-      const { data: newGroup, error: groupError } = await supabase
-        .from('snapshot_groups')
-        .insert({
-          user_id: user.id,
-          notes: `Cópia de: ${snapshotToDuplicate.notes || new Date(snapshotToDuplicate.created_at).toLocaleDateString('pt-BR')}`,
-        })
-        .select()
-        .single();
-
-      if (groupError) throw new Error(`Falha ao criar novo grupo: ${groupError.message}`);
-      if (!newGroup) throw new Error('Novo grupo de snapshot não foi retornado após a criação.');
-
-      // 2. Preparar os itens do snapshot original para duplicação
-      const originalItems = snapshotToDuplicate.snapshot_items;
-      if (!originalItems || originalItems.length === 0) {
-        toast.info("Snapshot original não continha itens, um snapshot vazio foi criado.");
-        onSnapshotDeleted(); // Refresh
-        return;
-      }
-
-      const newItems = originalItems.map(item => ({
-        snapshot_group_id: newGroup.id,
-        asset_id: item.asset_id,
-        asset_name: item.asset_name,
-        asset_category_name: item.asset_category_name,
-        total_value_brl: item.total_value_brl,
-        is_crypto_total: item.is_crypto_total,
-      }));
-
-      // 3. Inserir os novos itens em lote
-      const { error: itemsError } = await supabase.from('snapshot_items').insert(newItems);
-
-      if (itemsError) {
-        // Rollback: se a inserção de itens falhar, exclua o grupo recém-criado
-        await supabase.from('snapshot_groups').delete().eq('id', newGroup.id);
-        throw new Error(`Falha ao duplicar itens do snapshot: ${itemsError.message}`);
-      }
-
-      toast.success("Snapshot duplicado com sucesso!");
-      onSnapshotDeleted(); // Atualiza a lista na página de relatórios
-
-    } catch (error: any) {
-      console.error("Erro ao duplicar snapshot:", error);
-      toast.error(error.message || "Erro desconhecido ao duplicar snapshot.");
+  const confirmDelete = () => {
+    if (snapshotToDelete) {
+      onDelete(snapshotToDelete);
     }
-  };
-
-  const confirmDelete = async () => {
-    if (!snapshotToDelete || !user) return;
-
-    try {
-      // Etapa 1: Excluir snapshot_items associados (necessário se ON DELETE CASCADE não estiver configurado)
-      const { error: itemsError } = await supabase
-        .from('snapshot_items')
-        .delete()
-        .eq('snapshot_group_id', snapshotToDelete.id);
-
-      if (itemsError) {
-        console.error('Erro ao excluir itens do snapshot:', itemsError);
-        throw new Error(`Falha ao excluir itens do snapshot: ${itemsError.message}`);
-      }
-
-      // Etapa 2: Excluir o snapshot_group
-      const { error: groupError } = await supabase
-        .from('snapshot_groups')
-        .delete()
-        .eq('id', snapshotToDelete.id)
-        .eq('user_id', user.id); // Garante que o usuário só exclua seus próprios snapshots
-
-      if (groupError) {
-        console.error('Erro ao excluir grupo do snapshot:', groupError);
-        throw new Error(`Falha ao excluir o grupo do snapshot: ${groupError.message}`);
-      }
-
-      toast.success(`Snapshot de ${new Date(snapshotToDelete.created_at).toLocaleDateString('pt-BR')} excluído com sucesso.`);
-      onSnapshotDeleted(); // Chama o callback para ReportsPage atualizar a lista
-
-    } catch (error: any) {
-      console.error("Erro ao excluir snapshot:", error);
-      toast.error(error.message || "Erro desconhecido ao excluir snapshot.");
-    } finally {
-      setIsDeleteDialogOpen(false);
-      setSnapshotToDelete(null);
-    }
+    setIsDeleteDialogOpen(false);
+    setSnapshotToDelete(null);
   };
 
   if (isLoading) return <p className="text-center p-4">Carregando histórico...</p>;
-  if (fetchError) return <p className="text-center p-4 text-destructive">Erro ao carregar histórico: {fetchError}</p>;
   if (snapshotGroupsData.length === 0) {
     return <div className="text-center p-4">Nenhum snapshot registrado ainda.</div>;
   }
@@ -181,9 +95,12 @@ const SnapshotHistoryTable: React.FC<SnapshotHistoryTableProps> = ({ snapshotGro
                 <TableCell className="text-right font-medium">
                   {group.totalPatrimonioGrupo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </TableCell>
-                <TableCell onClick={(e) => e.stopPropagation()}> {/* Impede que o clique na área de ações expanda/recolha a linha */}
+                                <TableCell onClick={(e) => e.stopPropagation()}> {/* Impede que o clique na área de ações expanda/recolha a linha */}
                   <div className="flex justify-center items-center space-x-1">
-                     <Button variant="ghost" size="icon" onClick={() => handleDuplicateSnapshot(group)} aria-label="Duplicar snapshot">
+                    <Button variant="ghost" size="icon" onClick={() => onEdit(group)} aria-label="Editar snapshot">
+                      <Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => onDuplicate(group.id)} aria-label="Duplicar snapshot">
                       <Copy className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                     </Button>
                     <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(group)} aria-label="Excluir snapshot">
@@ -196,7 +113,7 @@ const SnapshotHistoryTable: React.FC<SnapshotHistoryTableProps> = ({ snapshotGro
                 <TableRow className="bg-muted/20 hover:bg-muted/40">
                   <TableCell colSpan={4} className="p-0">
                     <div className="p-4">
-                      <SnapshotItemsTable items={group.snapshot_items} onUpdate={onSnapshotDeleted} />
+                      <SnapshotItemsTable items={group.snapshot_items} onUpdate={onRefresh} />
                     </div>
                   </TableCell>
                 </TableRow>
