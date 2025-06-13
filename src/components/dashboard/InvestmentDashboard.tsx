@@ -31,7 +31,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 import { getCategoryColorMap } from '@/lib/chart-colors';
 import { fetchUSDtoBRLRate, FALLBACK_USD_TO_BRL_RATE } from "@/lib/utils";
-import { exportElementToPdf, exportToCsv } from "@/lib/exportUtils";
+import { exportGlobalCsv, exportGlobalPdf } from "@/lib/exportUtils";
+import { fetchAllDataForExport } from "@/services/globalExportService";
 import { FileDown } from "lucide-react";
 
 // Helper function to safely parse numeric values
@@ -59,6 +60,7 @@ const InvestmentDashboard = () => {
     const [isSnapshotLoading, setIsSnapshotLoading] = useState(true);
   const [categoryColorMap, setCategoryColorMap] = useState<Map<string, string>>(new Map());
   const [snapshotFetchError, setSnapshotFetchError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -277,30 +279,39 @@ useEffect(() => {
     });
   };
 
-  const handleExportPdf = () => {
-    toast({ title: "Exportando para PDF...", description: "O download começará em breve." });
-    exportElementToPdf('dashboard-to-export', 'dashboard-my-portfolio');
-  };
-
-  const handleExportCsv = () => {
-    const allocationData = dashboardData.portfolioAllocation;
-    if (!allocationData || allocationData.length === 0) {
-      toast({ title: "Erro", description: "Não há dados de alocação para exportar.", variant: "destructive" });
+  const handleGlobalExport = async (format: 'pdf' | 'csv') => {
+    if (!user) {
+      toast({ title: "Erro", description: "Usuário não autenticado.", variant: "destructive" });
       return;
     }
 
-    const totalValue = allocationData.reduce((sum, item) => sum + item.value, 0);
+    setIsExporting(true);
+    toast({ title: "Preparando relatório...", description: "Buscando todos os dados. Isso pode levar um momento." });
 
-    const headers = { name: 'Classe', value: 'Valor (R$)', percentage: 'Porcentagem (%)' };
-    const dataToExport = allocationData.map(item => ({
-      name: item.name,
-      value: item.value.toFixed(2),
-      percentage: totalValue > 0 ? ((item.value / totalValue) * 100).toFixed(2) : '0.00',
-    }));
+    try {
+      const allData = await fetchAllDataForExport(user.id);
 
-    toast({ title: "Exportando para CSV...", description: "O download começará em breve." });
-    exportToCsv(dataToExport, headers, 'dashboard-alocacao-por-classe');
+      if (format === 'pdf') {
+        toast({ title: "Gerando PDF...", description: "O download começará em breve." });
+        exportGlobalPdf(allData, 'relatorio-global-my-portfolio');
+      } else {
+        toast({ title: "Gerando CSV...", description: "O download começará em breve." });
+        exportGlobalCsv(allData, 'relatorio-global-my-portfolio');
+      }
+    } catch (error) {
+      console.error("Global export failed:", error);
+      toast({
+        title: "Falha na Exportação",
+        description: "Não foi possível gerar o relatório. Verifique o console para mais detalhes.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
+
+  const handleExportPdf = () => handleGlobalExport('pdf');
+  const handleExportCsv = () => handleGlobalExport('csv');
 
   const isPositiveReturn = dashboardData.returnPercentage >= 0;
 
@@ -327,17 +338,21 @@ useEffect(() => {
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <FileDown className="mr-2 h-4 w-4" />
-                Exportar
+               <Button variant="outline" size="sm" disabled={isExporting}>
+                {isExporting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <FileDown className="mr-2 h-4 w-4" />
+                )}
+                {isExporting ? 'Exportando...' : 'Exportar'}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={handleExportPdf}>
-                Exportar para PDF
+              <DropdownMenuItem onSelect={handleExportPdf} disabled={isExporting}>
+                Relatório Global (PDF)
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleExportCsv}>
-                Exportar para CSV (Alocação)
+              <DropdownMenuItem onSelect={handleExportCsv} disabled={isExporting}>
+                Relatório Global (CSV)
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
