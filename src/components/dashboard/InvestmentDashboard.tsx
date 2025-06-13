@@ -31,6 +31,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 import { getCategoryColorMap } from '@/lib/chart-colors';
 import { fetchUSDtoBRLRate, FALLBACK_USD_TO_BRL_RATE } from "@/lib/utils";
+import { exportElementToPdf, exportToCsv } from "@/lib/exportUtils";
+import { FileDown } from "lucide-react";
 
 // Helper function to safely parse numeric values
 const parseNumericValue = (value: any): number => {
@@ -275,6 +277,31 @@ useEffect(() => {
     });
   };
 
+  const handleExportPdf = () => {
+    toast({ title: "Exportando para PDF...", description: "O download começará em breve." });
+    exportElementToPdf('dashboard-to-export', 'dashboard-my-portfolio');
+  };
+
+  const handleExportCsv = () => {
+    const allocationData = dashboardData.portfolioAllocation;
+    if (!allocationData || allocationData.length === 0) {
+      toast({ title: "Erro", description: "Não há dados de alocação para exportar.", variant: "destructive" });
+      return;
+    }
+
+    const totalValue = allocationData.reduce((sum, item) => sum + item.value, 0);
+
+    const headers = { name: 'Classe', value: 'Valor (R$)', percentage: 'Porcentagem (%)' };
+    const dataToExport = allocationData.map(item => ({
+      name: item.name,
+      value: item.value.toFixed(2),
+      percentage: totalValue > 0 ? ((item.value / totalValue) * 100).toFixed(2) : '0.00',
+    }));
+
+    toast({ title: "Exportando para CSV...", description: "O download começará em breve." });
+    exportToCsv(dataToExport, headers, 'dashboard-alocacao-por-classe');
+  };
+
   const isPositiveReturn = dashboardData.returnPercentage >= 0;
 
   if (loading) {
@@ -286,8 +313,8 @@ useEffect(() => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+    <div id="dashboard-to-export" className="flex-1 space-y-4 p-4 md:p-8 pt-6 bg-background">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 mb-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
           <p className="text-muted-foreground">
@@ -301,17 +328,22 @@ useEffect(() => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
+                <FileDown className="mr-2 h-4 w-4" />
                 Exportar
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[200px]">
-              <DropdownMenuItem>Exportar como PDF</DropdownMenuItem>
-              <DropdownMenuItem>Exportar como CSV</DropdownMenuItem>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={handleExportPdf}>
+                Exportar para PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleExportCsv}>
+                Exportar para CSV (Alocação)
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
-      
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
