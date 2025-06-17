@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { Home, PieChart, Bitcoin, DollarSign, AlertCircle, BarChart3 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { fetchUSDtoBRLRate, ExchangeRateData, FALLBACK_USD_TO_BRL_RATE } from "../../lib/utils";
+import { fetchUSDtoBRLRate, ExchangeRateData, fetchSelicRate, SelicRateData } from "../../lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { useSidebar } from "../../contexts/SidebarContext";
 import { cn } from "../../lib/utils";
@@ -15,18 +15,23 @@ const navItems = [
 
 const Sidebar = () => {
   const { isCollapsed } = useSidebar();
-  const [exchangeRateInfo, setExchangeRateInfo] = useState<ExchangeRateData>({
-    rate: FALLBACK_USD_TO_BRL_RATE,
-    isReal: false,
-  });
+  const [exchangeRate, setExchangeRate] = useState<ExchangeRateData | null>(null);
+  const [selicRate, setSelicRate] = useState<SelicRateData | null>(null);
 
   useEffect(() => {
-    const getRate = async () => {
-      const data = await fetchUSDtoBRLRate();
-      setExchangeRateInfo(data);
+    const loadData = async () => {
+      const [usdData, selicData] = await Promise.all([
+        fetchUSDtoBRLRate(),
+        fetchSelicRate(),
+      ]);
+      setExchangeRate(usdData);
+      setSelicRate(selicData);
     };
-    getRate();
+
+    loadData();
   }, []);
+
+  const showAlert = !exchangeRate?.isReal || !selicRate?.isReal;
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -62,7 +67,7 @@ const Sidebar = () => {
           ))}
         </nav>
 
-        <div className="pt-4 mt-4 border-t border-muted/30">
+                <div className="pt-4 mt-4 border-t border-muted/30">
           <Tooltip>
             <TooltipTrigger asChild>
               <div className={cn(
@@ -70,33 +75,32 @@ const Sidebar = () => {
                 isCollapsed ? "w-10 justify-center" : "px-3"
               )}>
                 <DollarSign className="h-5 w-5 text-primary" />
-                <div className={cn("ml-3 flex items-baseline", isCollapsed && "hidden")}>
-                  <span className="text-muted-foreground mr-1.5">USD:</span>
-                  <span className="font-semibold text-foreground">
-                    {exchangeRateInfo.rate.toLocaleString("pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 4,
-                    })}
-                  </span>
-                  {!exchangeRateInfo.isReal && (
-                     <AlertCircle className="h-4 w-4 text-red-500 ml-1.5" />
+                <div className={cn("ml-3 flex items-center", isCollapsed && "hidden")}>
+                  <div className="text-xs text-muted-foreground">
+                    <p>
+                      USD: {exchangeRate?.rate.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                    <p>
+                      SELIC: {selicRate?.rate.toFixed(2)}%
+                    </p>
+                  </div>
+                  {showAlert && (
+                    <AlertCircle className="h-4 w-4 text-red-500 ml-2" />
                   )}
                 </div>
               </div>
             </TooltipTrigger>
             {isCollapsed && (
               <TooltipContent side="right" sideOffset={5}>
-                <p>USD/BRL: {exchangeRateInfo.rate.toLocaleString("pt-BR", { style: 'currency', currency: 'BRL' })}</p>
-                {!exchangeRateInfo.isReal && <p className="text-red-500">Cotação de fallback</p>}
+                <p>USD: {exchangeRate?.rate.toFixed(2)} {!exchangeRate?.isReal && "(Fallback)"}</p>
+                <p>SELIC: {selicRate?.rate.toFixed(2)}% {!selicRate?.isReal && "(Fallback)"}</p>
               </TooltipContent>
             )}
           </Tooltip>
-          {exchangeRateInfo.isReal && exchangeRateInfo.timestamp && !isCollapsed && (
-            <div className="px-3 mt-1 text-xs text-muted-foreground/80">
-              Atualizado: {exchangeRateInfo.timestamp}
-            </div>
+          {!isCollapsed && (
+             <div className="px-3 mt-1 text-xs text-muted-foreground/80">
+                {exchangeRate?.isReal ? `USD atualizado: ${exchangeRate.timestamp}` : "Usando cotação de fallback para o dólar."}
+             </div>
           )}
         </div>
       </div>

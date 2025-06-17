@@ -61,3 +61,48 @@ export const fetchUSDtoBRLRate = async (): Promise<ExchangeRateData> => {
   }
 };
 // --- Fim Cotação Dólar ---
+
+// --- Taxa SELIC ---
+export const FALLBACK_SELIC_RATE = 10.50;
+
+export interface SelicRateData {
+  rate: number;
+  isReal: boolean;
+  date?: string; // Data da cotação
+}
+
+/**
+ * Busca a taxa SELIC mais recente da API de Dados Abertos do Banco Central do Brasil.
+ * @returns Um objeto contendo a taxa e a data de referência.
+ */
+export const fetchSelicRate = async (): Promise<SelicRateData> => {
+  // Endpoint para obter o último valor da série da SELIC diária (código 11)
+  const url = 'https://api.bcb.gov.br/dados/serie/bcdata.sgs.11/dados/ultimos/1?formato=json';
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error("fetchSelicRate (utils): Failed to fetch from BCB API. Status:", response.status);
+      return { rate: FALLBACK_SELIC_RATE, isReal: false };
+    }
+
+    const data = await response.json();
+
+    // A API retorna um array com um único objeto
+    if (data && data.length > 0 && data[0].valor) {
+      const rate = parseFloat(data[0].valor);
+      if (!isNaN(rate)) {
+        console.log(`fetchSelicRate (utils): Fetched SELIC rate: ${rate}% on ${data[0].data}`);
+        return { rate, isReal: true, date: data[0].data };
+      }
+    }
+
+    console.error("fetchSelicRate (utils): Invalid API response structure.");
+    return { rate: FALLBACK_SELIC_RATE, isReal: false };
+
+  } catch (error) {
+    console.error("fetchSelicRate (utils): Error fetching/parsing:", error);
+    return { rate: FALLBACK_SELIC_RATE, isReal: false };
+  }
+};
+// --- Fim Taxa SELIC ---
