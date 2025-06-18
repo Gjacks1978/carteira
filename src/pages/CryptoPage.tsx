@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { PlusCircle, Download, Bitcoin, DollarSign, Wallet, Shield } from "lucide-react";
 import CryptoTable from "@/components/crypto/CryptoTable";
+
 import AddAssetForm from "@/components/assets/AddAssetForm";
 import { useToast } from "@/hooks/use-toast";
 import { Crypto } from "@/types/assets";
@@ -13,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 import { AllocationBySectorCard } from "@/components/crypto/AllocationBySectorCard";
 import { fetchUSDtoBRLRate, ExchangeRateData, FALLBACK_USD_TO_BRL_RATE } from "@/lib/utils";
+import { updateCryptoPrices } from "@/services/cryptoService";
 
 const CryptoPage = () => {
   const [crypto, setCrypto] = useState<Crypto[]>([]);
@@ -45,9 +47,21 @@ const CryptoPage = () => {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await fetchSectorsAndCustodies(); 
-      await fetchCryptoAssets(); 
-      setLoading(false);
+      try {
+        await fetchSectorsAndCustodies(); 
+        const assets = await fetchCryptoAssets(); 
+        const updatedAssets = await updateCryptoPrices(assets);
+        setCrypto(updatedAssets);
+      } catch (error) {
+        console.error("Error updating crypto prices:", error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao atualizar preços",
+          description: "Não foi possível atualizar os preços das criptomoedas."
+        });
+      } finally {
+        setLoading(false);
+      }
     };
 
     if (user) {
@@ -98,8 +112,7 @@ const CryptoPage = () => {
 
   const fetchCryptoAssets = async () => {
     if (!user) {
-      setCrypto([]);
-      return;
+      return [];
     }
     try {
       const { data, error } = await supabase
@@ -110,7 +123,7 @@ const CryptoPage = () => {
       if (error) throw error;
       
       if (data) {
-        const transformedCrypto = data.map(item => ({
+        return data.map(item => ({
           id: item.id,
           ticker: item.ticker,
           name: item.name,
@@ -123,9 +136,8 @@ const CryptoPage = () => {
           portfolioPercentage: Number(item.portfolio_percentage),
           changePercentage: Number(item.change_percentage),
         }));
-        
-        setCrypto(transformedCrypto);
       }
+      return [];
     } catch (error) {
       console.error("Error fetching crypto assets:", error);
       toast({
@@ -133,7 +145,7 @@ const CryptoPage = () => {
         title: "Erro ao carregar criptoativos",
         description: "Não foi possível carregar a lista de criptoativos."
       });
-      setCrypto([]); 
+      return [];
     } 
   };
   
@@ -586,9 +598,9 @@ const CryptoPage = () => {
         sectors={Object.values(sectors)} 
         custodies={Object.values(custodies)} 
         onAddSector={handleAddSector} 
-        onRemoveSector={handleRemoveSector} 
-        onAddCustody={handleAddCustody} 
-        onRemoveCustody={handleRemoveCustody} 
+        onRemoveSector={handleRemoveSector}
+        onAddCustody={handleAddCustody}
+        onRemoveCustody={handleRemoveCustody}
       />
     </div>
   );

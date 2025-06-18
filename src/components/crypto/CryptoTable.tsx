@@ -120,6 +120,7 @@ const CryptoTable = ({
               <TableHead className="text-right">Preço (USD)</TableHead>
               <TableHead className="text-right">Quantidade</TableHead>
               <TableHead className="text-right">Total (USD)</TableHead>
+              <TableHead className="text-right">Total (BRL)</TableHead>
               <TableHead>Custódia</TableHead>
               <TableHead className="text-center w-[100px]">Ações</TableHead>
             </TableRow>
@@ -174,6 +175,12 @@ const CryptoTable = ({
                   ${asset.totalUSD.toLocaleString("en-US", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
+                  })}
+                </TableCell>
+                <TableCell className="text-right font-medium">
+                  {asset.totalBRL.toLocaleString("pt-BR", {
+                    style: 'currency',
+                    currency: 'BRL',
                   })}
                 </TableCell>
                 <TableCell>
