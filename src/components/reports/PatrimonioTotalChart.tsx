@@ -1,5 +1,5 @@
 import React from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { SnapshotGroupWithTotal } from '@/types/reports';
 
 
@@ -66,23 +66,38 @@ const PatrimonioTotalChart: React.FC<PatrimonioTotalChartProps> = ({ snapshotGro
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
+      <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 30, bottom: 0 }}>
+        <defs>
+          <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
+            <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted))" />
         <XAxis 
           dataKey="formattedDate" 
-          tick={{ fontSize: 12 }}
-          stroke="hsl(var(--muted-foreground))"
+          tickFormatter={(value) => new Date(value).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })} 
+          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+          tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
         />
         <YAxis 
-          tickFormatter={formatCurrencyForAxis} 
-          tick={{ fontSize: 12 }} 
-          stroke="hsl(var(--muted-foreground))"
+          tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`} 
+          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+          tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
           width={80}
         />
-        <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '3 3' }} />
-        <Legend wrapperStyle={{fontSize: "14px"}} />
+        <Tooltip
+          contentStyle={{ 
+            backgroundColor: 'hsl(var(--background))',
+            borderColor: 'hsl(var(--border))',
+            color: 'hsl(var(--foreground))'
+          }}
+          labelFormatter={(label) => new Date(label).toLocaleDateString('pt-BR')}
+          formatter={(value: number) => [value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), 'Patrimônio']}
+        />
+        <Area type="monotone" dataKey="Valor Total" stroke="#8884d8" fillOpacity={1} fill="url(#colorTotal)" />
         <Line type="monotone" dataKey="Valor Total" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4, fill: 'hsl(var(--primary))' }} activeDot={{ r: 6 }} />
-      </LineChart>
+      </AreaChart>
     </ResponsiveContainer>
   );
 };

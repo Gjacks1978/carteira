@@ -14,6 +14,7 @@ const navItems = [
 ];
 
 const Sidebar = () => {
+  const [selicRate, setSelicRate] = useState<number | null>(null);
   const { isCollapsed } = useSidebar();
   const [exchangeRate, setExchangeRate] = useState<ExchangeRateData | null>(null);
   const [selicRate, setSelicRate] = useState<SelicRateData | null>(null);
