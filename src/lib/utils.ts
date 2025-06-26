@@ -5,27 +5,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export async function fetchSelicRate(): Promise<number | null> {
-  // Acessa a API de séries temporais do Banco Central do Brasil
-  // Série 432: Meta Selic definida pelo Copom
-  const url = 'https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json';
-
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Erro na rede: ${response.statusText}`);
-    }
-    const data = await response.json();
-    if (data && data.length > 0) {
-      const selicValue = parseFloat(data[0].valor);
-      return selicValue;
-    }
-    return null;
-  } catch (error) {
-    console.error('Erro ao buscar a taxa Selic:', error);
-    return null;
-  }
-}
 
 // --- Cotação Dólar ---
 const USD_BRL_API_URL = "https://economia.awesomeapi.com.br/last/USD-BRL"; // URL corrigida
