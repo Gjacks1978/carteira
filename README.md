@@ -17,15 +17,16 @@
 - **Temas Claro e Escuro**: Personalize a aparência da aplicação para sua preferência.
 - **Sidebar Aprimorada**: Perfil do usuário e botão de alternância de tema fixos na base da barra lateral, acessíveis mesmo com rolagem.
 
-## 🛠️ Tecnologias Utilizadas
+## Tecnologias Utilizadas
 
-- **Frontend**: React, TypeScript, Vite
+- **Frontend**: React + TypeScript + Vite
+<!-- Trigger deploy -->
 - **Estilização**: Tailwind CSS, shadcn/ui
 - **Backend & Banco de Dados**: Supabase (Auth, Postgres, Edge Functions)
 - **Gerenciamento de Estado**: React Hooks & Context API
 - **Roteamento**: React Router DOM
 
-## 🏁 Como Começar
+## Como Começar
 
 ### Pré-requisitos
 
