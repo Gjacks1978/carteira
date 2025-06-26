@@ -68,3 +68,6 @@ Contribuições são muito bem-vindas! Se você tem ideias para novas funcionali
 ## 📄 Licença
 
 Este projeto está sob a licença MIT.
+
+
+##
